@@ -18,7 +18,7 @@ import {
   CanvasTexture,
   SRGBColorSpace,
 } from "three";
-import { CARD, TABLE } from "../../kit/js/units.js";
+import { CARD, TABLE } from "./units.js";
 
 const SUIT_SYMBOLS = { S: "♠", H: "♥", D: "♦", C: "♣" };
 const SUIT_COLORS = { S: "#15171c", H: "#c8202c", D: "#c8202c", C: "#15171c" };
