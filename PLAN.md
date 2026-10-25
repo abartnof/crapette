@@ -83,7 +83,7 @@ crapette/
   - Create `CREDITS.md`, `docs/RULES.md`, and `docs/PROTOCOL.md`.
   - Create `bin/gate` test runner script.
 
-- [ ] **Phase 2: Core Engine & TDD Test Suite (`src/engine/`)**
+- [x] **Phase 2: Core Engine & TDD Test Suite (`src/engine/`)**
   - TDD: `rng.js` (xoshiro256** + SplitMix64) and tests.
   - TDD: `cards.js` (double deck, 104 cards, Red/Blue deck tagging, suit/rank helpers).
   - TDD: `game.js` (layout setup, available cards, foundation moves, tableau building, opponent loading, waste recycling, victory condition).
@@ -91,7 +91,7 @@ crapette/
   - TDD: `ai.js` (bot move selection, difficulty profiles, blunder-calling reaction).
   - TDD: `scoring.js` (match scoring, cards remaining penalties).
 
-- [ ] **Phase 3: Web Audio Synthesizer (`src/web3d/audio.js`)**
+- [x] **Phase 3: Web Audio Synthesizer (`src/web3d/audio.js`)**
   - Synthesize card slide, flip, snap, and table tap sounds.
   - Synthesize 13-step ascending pentatonic chimes for foundation building.
   - Synthesize dramatic "CRAPETTE!" impact buzzer and victory fanfare.
