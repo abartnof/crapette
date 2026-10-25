@@ -11,6 +11,7 @@ export class HUD {
     onNewGame,
     onToggleSound,
     onToggleSkill,
+    onToggleMode,
     onVolumeChange,
   } = {}) {
     this.doc = document;
@@ -22,10 +23,12 @@ export class HUD {
     this.onNewGame = onNewGame;
     this.onToggleSound = onToggleSound;
     this.onToggleSkill = onToggleSkill;
+    this.onToggleMode = onToggleMode;
     this.onVolumeChange = onVolumeChange;
 
     this.isMuted = false;
     this.currentSkill = "master"; // "master" | "novice"
+    this.gameMode = "human_vs_ai"; // "human_vs_ai" | "ai_vs_ai"
 
     this._initDOM();
   }
@@ -74,6 +77,11 @@ export class HUD {
       if (this.onToggleSound) this.onToggleSound();
     });
 
+    const modeBtn = this._el("button", { className: "hud-tool-btn", id: "mode-btn", text: "Mode: Vs AI" });
+    modeBtn.addEventListener("click", () => {
+      if (this.onToggleMode) this.onToggleMode();
+    });
+
     const skillBtn = this._el("button", { className: "hud-tool-btn", id: "skill-btn", text: "AI: Master" });
     skillBtn.addEventListener("click", () => {
       if (this.onToggleSkill) this.onToggleSkill();
@@ -87,7 +95,7 @@ export class HUD {
       if (this.onNewGame) this.onNewGame();
     });
 
-    const toolBar = this._el("div", { className: "hud-toolbar" }, muteBtn, skillBtn, rulesBtn, newDealBtn);
+    const toolBar = this._el("div", { className: "hud-toolbar" }, muteBtn, modeBtn, skillBtn, rulesBtn, newDealBtn);
     header.append(titleBox, ledgerBox, toolBar);
 
     // 2. Turn Status Banner
@@ -225,6 +233,14 @@ export class HUD {
     }
   }
 
+  setMode(mode) {
+    this.gameMode = mode;
+    const btn = this.container.querySelector("#mode-btn");
+    if (btn) {
+      btn.textContent = mode === "ai_vs_ai" ? "Mode: AI vs AI" : "Mode: Vs AI";
+    }
+  }
+
   showToast(message, duration = 3000) {
     const container = this.container.querySelector("#toast-container");
     if (!container || !this.doc) return;
@@ -298,7 +314,8 @@ export class HUD {
     const undoBtn = this.container.querySelector("#undo-btn");
     const crapetteBtn = this.container.querySelector("#crapette-btn");
 
-    const isHumanTurn = state.activePlayer === 0;
+    const isAiVsAi = this.gameMode === "ai_vs_ai";
+    const isHumanTurn = !isAiVsAi && state.activePlayer === 0;
 
     if (drawBtn) {
       drawBtn.disabled = !isHumanTurn || Boolean(state.drawnCard);
@@ -312,23 +329,30 @@ export class HUD {
 
     // 5. Crapette button glowing state
     if (crapetteBtn) {
-      if (state.crapetteEligible) {
+      if (!isAiVsAi && state.crapetteEligible) {
         crapetteBtn.classList.add("eligible");
       } else {
         crapetteBtn.classList.remove("eligible");
       }
+      crapetteBtn.disabled = isAiVsAi;
     }
 
     // 6. Turn status banner
     const banner = this.container.querySelector("#status-banner");
     if (banner) {
       if (state.winner !== null) {
-        const winnerName = state.winner === 0 ? "You Win!" : "Opponent Wins!";
+        const winnerName = isAiVsAi
+          ? (state.winner === 0 ? "Player 1 (Crimson) Wins!" : "Player 2 (Navy) Wins!")
+          : (state.winner === 0 ? "You Win!" : "Opponent Wins!");
         banner.textContent = `Deal Over! ${winnerName}`;
         banner.className = "hud-banner victory";
-      } else if (state.crapetteEligible) {
+      } else if (state.crapetteEligible && !isAiVsAi) {
         banner.textContent = "BLUNDER DETECTED! CALL CRAPETTE!";
         banner.className = "hud-banner blunder";
+      } else if (isAiVsAi) {
+        const activeName = state.activePlayer === 0 ? "Player 1 (Crimson)" : "Player 2 (Navy)";
+        banner.textContent = `AI vs AI — ${activeName} thinking...`;
+        banner.className = "hud-banner opp-turn";
       } else if (isHumanTurn) {
         if (state.drawnCard) {
           banner.textContent = `Drawn: ${state.drawnCard.code} — Play to board or Discard to Waste`;

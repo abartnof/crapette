@@ -17,11 +17,13 @@ export class GameController {
     seed = 12345n,
     skill = "master",
     mode = "competitive",
+    gameMode = "human_vs_ai",
     stepDelayMs = 500,
   } = {}) {
     this.seed = BigInt(seed);
     this.skill = skill;
     this.mode = mode;
+    this.gameMode = gameMode;
     this.stepDelayMs = stepDelayMs;
 
     this.sound = sound;
@@ -36,6 +38,24 @@ export class GameController {
     this.isAiRunning = false;
 
     this.initGame();
+  }
+
+  setGameMode(mode) {
+    this.gameMode = mode;
+    if (this.hud && typeof this.hud.setMode === "function") {
+      this.hud.setMode(mode);
+    }
+    const modeLabel = mode === "ai_vs_ai" ? "AI vs AI (Watching)" : "Vs Computer (Play)";
+    if (this.hud && typeof this.hud.showToast === "function") {
+      this.hud.showToast(`Mode: ${modeLabel}`);
+    }
+    this._syncAll();
+    this._checkTurn();
+  }
+
+  toggleGameMode() {
+    const next = this.gameMode === "ai_vs_ai" ? "human_vs_ai" : "ai_vs_ai";
+    this.setGameMode(next);
   }
 
   initGame(dealSeed = null) {
@@ -68,6 +88,13 @@ export class GameController {
       return;
     }
 
+    if (this.gameMode === "ai_vs_ai") {
+      if (!this.isAiRunning && this.stepDelayMs >= 0) {
+        this._scheduleAiTurn();
+      }
+      return;
+    }
+
     if (this.game.activePlayer === 1 && !this.isAiRunning && this.stepDelayMs >= 0) {
       this._scheduleAiTurn();
     }
@@ -84,7 +111,9 @@ export class GameController {
       this.ledger.recordDeal(dealScore);
       if (this.hud) {
         this.hud.render(state, this.ledger);
-        const winnerName = dealScore.winner === 0 ? "You" : "Opponent";
+        const winnerName = this.gameMode === "ai_vs_ai"
+          ? (dealScore.winner === 0 ? "Player 1 (Crimson)" : "Player 2 (Navy)")
+          : (dealScore.winner === 0 ? "You" : "Opponent");
         this.hud.showToast(`Deal Won by ${winnerName}! (+${dealScore.totalPoints} pts)`);
       }
     } catch (e) {
@@ -188,14 +217,15 @@ export class GameController {
     if (this.aiTimer) {
       clearTimeout(this.aiTimer);
     }
-    const delay = this.stepDelayMs;
+    const delay = this.gameMode === "ai_vs_ai" ? Math.min(this.stepDelayMs, 250) : this.stepDelayMs;
     this.aiTimer = setTimeout(() => {
       this.stepAI();
     }, delay);
   }
 
   async stepAI() {
-    if (this.game.winner != null || this.game.activePlayer !== 1) return;
+    if (this.game.winner != null) return;
+    if (this.gameMode !== "ai_vs_ai" && this.game.activePlayer !== 1) return;
     this.isAiRunning = true;
 
     try {
@@ -205,8 +235,8 @@ export class GameController {
         return;
       }
 
-      // If AI made a blunder in novice mode, pause slightly to let human challenge
-      if (this.game.crapetteBlunder && this.skill === "novice" && this.stepDelayMs > 0) {
+      // If AI made a blunder in novice mode and it's human vs AI, pause slightly to let human challenge
+      if (this.gameMode !== "ai_vs_ai" && this.game.crapetteBlunder && this.skill === "novice" && this.stepDelayMs > 0) {
         await new Promise((resolve) => setTimeout(resolve, Math.max(600, this.stepDelayMs)));
         if (this.game.activePlayer !== 1) {
           // Human claimed crapette during the pause!
@@ -217,7 +247,10 @@ export class GameController {
 
       if (move === "crapette") {
         if (this.sound) this.sound.crapetteCall();
-        if (this.hud) this.hud.showToast("Opponent calls CRAPETTE!");
+        const callerName = this.gameMode === "ai_vs_ai"
+          ? (this.game.activePlayer === 0 ? "Player 1" : "Player 2")
+          : "Opponent";
+        if (this.hud) this.hud.showToast(`${callerName} calls CRAPETTE!`);
         this.game.send("crapette");
       } else if (move === "draw") {
         this.game.send("draw");
@@ -228,6 +261,9 @@ export class GameController {
           this.sound.cardSlide();
           this.sound.cardSnap();
         }
+      } else if (move === "pass") {
+        this.game.send("pass");
+        if (this.hud) this.hud.showToast("Turn passed.");
       } else if (move.startsWith("m ")) {
         const parts = move.slice(2).split(">");
         this.game.send(move);
@@ -236,9 +272,13 @@ export class GameController {
 
       this._syncAll();
 
-      if (this.game.winner === null && this.game.activePlayer === 1) {
-        // Continue AI turns
-        this._scheduleAiTurn();
+      if (this.game.winner === null) {
+        if (this.gameMode === "ai_vs_ai" || this.game.activePlayer === 1) {
+          // Continue AI turns
+          this._scheduleAiTurn();
+        }
+      } else {
+        this._handleDealVictory();
       }
     } finally {
       this.isAiRunning = false;
@@ -279,6 +319,9 @@ export function init() {
       controller.ai.skill = newSkill;
       hud.setSkill(newSkill);
       hud.showToast(`AI skill set to ${newSkill === "master" ? "Master" : "Novice"}`);
+    },
+    onToggleMode: () => {
+      controller?.toggleGameMode();
     },
   });
 

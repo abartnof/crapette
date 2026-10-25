@@ -129,3 +129,89 @@ test("GameController stepAI advances AI moves when active player is 1", async ()
   // Either AI played a move or ended its turn
   assert.ok(hud.rendered.length >= 2, "HUD updated during AI step");
 });
+
+test("GameController supports AI vs AI mode and toggling mode", () => {
+  const sound = new MockSound();
+  const hud = new MockHUD();
+  const table = new MockTable();
+
+  const controller = new GameController({
+    sound,
+    hud,
+    table,
+    seed: 12345n,
+    stepDelayMs: 0,
+  });
+
+  assert.equal(controller.gameMode, "human_vs_ai");
+  controller.toggleGameMode();
+  assert.equal(controller.gameMode, "ai_vs_ai");
+  controller.toggleGameMode();
+  assert.equal(controller.gameMode, "human_vs_ai");
+});
+
+test("GameController stepAI executes moves for player 0 in AI vs AI mode", async () => {
+  const sound = new MockSound();
+  const hud = new MockHUD();
+  const table = new MockTable();
+
+  const controller = new GameController({
+    sound,
+    hud,
+    table,
+    seed: 12345n,
+    stepDelayMs: 0,
+    gameMode: "ai_vs_ai",
+  });
+
+  controller.game.activePlayer = 0;
+  await controller.stepAI();
+
+  assert.ok(hud.rendered.length >= 2, "HUD updated during AI vs AI step for player 0");
+});
+
+test("GameController stepAI handles pass action", async () => {
+  const sound = new MockSound();
+  const hud = new MockHUD();
+  const table = new MockTable();
+
+  const controller = new GameController({
+    sound,
+    hud,
+    table,
+    seed: 12345n,
+    stepDelayMs: 0,
+    gameMode: "ai_vs_ai",
+  });
+
+  // Mock AI returning 'pass'
+  controller.ai.chooseMove = () => "pass";
+  controller.game.activePlayer = 0;
+
+  await controller.stepAI();
+  assert.equal(controller.game.activePlayer, 1, "Turn passed to player 1 on pass");
+});
+
+test("GameController runs a match in AI vs AI mode to completion", async () => {
+  const sound = new MockSound();
+  const hud = new MockHUD();
+  const table = new MockTable();
+
+  const controller = new GameController({
+    sound,
+    hud,
+    table,
+    seed: 42n,
+    stepDelayMs: -1, // disable auto timer, step manually
+    gameMode: "ai_vs_ai",
+  });
+
+  let steps = 0;
+  while (controller.game.winner == null && steps < 2000) {
+    await controller.stepAI();
+    steps++;
+  }
+
+  assert.notEqual(controller.game.winner, null, "Game finished with a winner");
+  assert.ok(controller.ledger.dealCount >= 1, "Deal score was recorded in ledger");
+});

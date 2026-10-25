@@ -215,9 +215,14 @@ export class CrapetteGame {
       }
     }
 
-    // Can draw from stock if no card currently drawn
+    // Can draw from stock if no card currently drawn and stock or waste has cards
     if (!this.drawnCard) {
-      legal.push("draw");
+      if (active.stock.length > 0 || active.waste.length > 0) {
+        legal.push("draw");
+      }
+      if (active.stock.length === 0 && active.waste.length === 0) {
+        legal.push("pass");
+      }
     } else {
       legal.push("waste");
     }
@@ -288,6 +293,10 @@ export class CrapetteGame {
       return this.executeUndo();
     }
 
+    if (trimmed === "pass") {
+      return this.executePass();
+    }
+
     if (trimmed.startsWith("m ")) {
       const parts = trimmed.slice(2).split(">");
       if (parts.length === 2) {
@@ -341,8 +350,17 @@ export class CrapetteGame {
     // Reset turn-specific history and switch player
     this.history = [];
     this.crapetteBlunder = null;
+    this.checkWin();
     this.activePlayer = 1 - this.activePlayer;
 
+    return { ok: true, state: this.state() };
+  }
+
+  executePass() {
+    this.history = [];
+    this.crapetteBlunder = null;
+    this.checkWin();
+    this.activePlayer = 1 - this.activePlayer;
     return { ok: true, state: this.state() };
   }
 

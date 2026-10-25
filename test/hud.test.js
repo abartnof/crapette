@@ -295,6 +295,33 @@ test("HUD emits action callbacks on user interactions", () => {
   assert.equal(skillToggled, true);
 });
 
+test("HUD supports toggling between Human vs AI and AI vs AI modes", () => {
+  const container = new MockElement("div");
+  let modeToggled = false;
+
+  const hud = new HUD({
+    container,
+    document: { createElement: (tag) => new MockElement(tag) },
+    onToggleMode: () => { modeToggled = true; },
+  });
+
+  const modeBtn = container.querySelector("#mode-btn");
+  assert.ok(modeBtn, "Mode button exists in toolbar");
+  assert.equal(modeBtn.textContent, "Mode: Vs AI");
+
+  modeBtn.click();
+  assert.equal(modeToggled, true, "onToggleMode callback called");
+
+  hud.setMode("ai_vs_ai");
+  assert.equal(modeBtn.textContent, "Mode: AI vs AI");
+
+  // Verify banner reflects AI vs AI mode during render
+  const state = createMockGameState({ activePlayer: 0 });
+  hud.render(state, null);
+  const banner = container.querySelector("#status-banner");
+  assert.ok(banner.textContent.includes("AI vs AI"), "Banner indicates AI vs AI mode");
+});
+
 test("HUD displays toast notifications", () => {
   const container = new MockElement("div");
   const hud = new HUD({ container, document: { createElement: (tag) => new MockElement(tag) } });

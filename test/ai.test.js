@@ -213,3 +213,49 @@ test("AI: supports novice skill setting with occasional oversights", () => {
   assert.equal(novice.skill, "novice");
   assert.equal(master.skill, "master");
 });
+
+test("AI: prevents infinite loop tableau oscillations", () => {
+  const game = new CrapetteGame({ seed: 1n });
+  const ai = new CrapetteAI({ seed: 1n });
+
+  // Move 40 in seed 1n previously triggered t2>t4 and t4>t2 loop
+  const moves = [];
+  for (let m = 0; m < 60; m++) {
+    const move = ai.chooseMove(game);
+    assert.ok(move, `Move ${m} should not be null`);
+    moves.push(move);
+    const res = game.send(move);
+    assert.equal(res.ok, true, `Move ${move} failed: ${res.error}`);
+  }
+
+  // Ensure no consecutive reverse oscillations like t2>t4 followed by t4>t2
+  let oscillations = 0;
+  for (let i = 0; i < moves.length - 1; i++) {
+    if (moves[i] === "m t2>t4" && moves[i + 1] === "m t4>t2") oscillations++;
+  }
+  assert.equal(oscillations, 0, "AI must not oscillate cards between tableau columns");
+});
+
+test("AI: successfully plays 50 full simulated games to completion", () => {
+  let finished = 0;
+  const wins = [0, 0];
+  for (let i = 0; i < 50; i++) {
+    const seed = BigInt(i + 1);
+    const game = new CrapetteGame({ seed });
+    const ai = new CrapetteAI({ seed });
+    let moves = 0;
+    while (game.winner == null && moves < 2500) {
+      const move = ai.chooseMove(game);
+      if (!move) break;
+      const res = game.send(move);
+      if (!res.ok) break;
+      moves++;
+    }
+    if (game.winner != null) {
+      finished++;
+      wins[game.winner]++;
+    }
+  }
+  assert.equal(finished, 50, "All 50 simulated games must finish with a winner");
+  assert.ok(wins[0] > 10 && wins[1] > 10, "Both players should win a healthy share of matches");
+});
