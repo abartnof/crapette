@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { HUD } from "../web3d/src/hud.js";
+import { HUD, segmentState, reserveSegmentState, trackers, trackerTable, celebrate } from "../web3d/src/hud.js";
 import { MatchLedger } from "../src/engine/scoring.js";
 
 // Minimal DOM mock for HUD tests
@@ -9,7 +9,12 @@ class MockElement {
     this.tagName = tagName.toUpperCase();
     this.children = [];
     this.attributes = {};
-    this.style = {};
+    this.parentNode = null;
+    this.style = {
+      setProperty: (k, v) => { this.style[k] = String(v); },
+      getPropertyValue: (k) => this.style[k] ?? "",
+      removeProperty: (k) => { delete this.style[k]; },
+    };
     this._textContent = "";
     this._className = "";
     this.eventListeners = {};
@@ -96,11 +101,52 @@ class MockElement {
       if (typeof n === "string") {
         const textNode = new MockElement("#text");
         textNode._textContent = n;
+        textNode.parentNode = this;
         this.children.push(textNode);
       } else if (n) {
+        n.parentNode = this;
         this.children.push(n);
       }
     }
+  }
+
+  removeChild(node) {
+    const idx = this.children.indexOf(node);
+    if (idx !== -1) {
+      this.children.splice(idx, 1);
+      node.parentNode = null;
+    }
+  }
+
+  remove() {
+    if (this.parentNode) {
+      this.parentNode.removeChild(this);
+    }
+  }
+
+  getBoundingClientRect() {
+    return { left: 50, top: 50, right: 150, bottom: 150, width: 100, height: 100 };
+  }
+
+  get tHead() {
+    let th = this.children.find((c) => c.tagName === "THEAD");
+    if (!th) {
+      th = new MockElement("thead");
+      th.append(new MockElement("tr"));
+      this.append(th);
+    }
+    return {
+      rows: th.children.filter((c) => c.tagName === "TR"),
+    };
+  }
+
+  get tBodies() {
+    let tb = this.children.find((c) => c.tagName === "TBODY");
+    if (!tb) {
+      tb = new MockElement("tbody");
+      this.append(tb);
+    }
+    return [tb];
   }
 
   replaceChildren(...nodes) {
@@ -164,7 +210,8 @@ function matches(node, selector) {
     return node.getAttribute("id") === selector.slice(1);
   }
   if (selector.startsWith(".")) {
-    return node.classList.contains(selector.slice(1));
+    const classes = selector.split(".").filter(Boolean);
+    return classes.every((cls) => node.classList.contains(cls));
   }
   return node.tagName.toLowerCase() === selector.toLowerCase();
 }
@@ -525,4 +572,223 @@ test("HUD displays progressive tutorial modal with step, title, summary, bullets
   assert.ok(gotItBtn, "Got It button exists");
   gotItBtn.click();
   assert.equal(pageDismissed, true, "onDismissTutorial called");
+});
+
+test("HUD model: segmentState and reserveSegmentState correctly compute segment status", () => {
+  // segmentState for value 5 out of 13
+  assert.equal(segmentState(1, 5, 13), "reached");
+  assert.equal(segmentState(4, 5, 13), "reached");
+  assert.equal(segmentState(5, 5, 13), "cursor");
+  assert.equal(segmentState(6, 5, 13), "unreached");
+  assert.equal(segmentState(13, 5, 13), "unreached");
+
+  // 0 value -> all unreached
+  assert.equal(segmentState(1, 0, 13), "unreached");
+
+  // reserveSegmentState: 13 cards remaining means 0 cleared -> all unreached
+  assert.equal(reserveSegmentState(1, 13), "unreached");
+  assert.equal(reserveSegmentState(13, 13), "unreached");
+
+  // 11 cards remaining means 2 cleared
+  assert.equal(reserveSegmentState(1, 11), "reached");
+  assert.equal(reserveSegmentState(2, 11), "cursor");
+  assert.equal(reserveSegmentState(3, 11), "unreached");
+
+  // 0 cards remaining means 13 cleared (depot emptied!)
+  assert.equal(reserveSegmentState(1, 0), "reached");
+  assert.equal(reserveSegmentState(12, 0), "reached");
+  assert.equal(reserveSegmentState(13, 0), "cursor");
+});
+
+test("HUD model: trackers extracts reserve, tableau, waste, stock, and foundation suits", () => {
+  const state = {
+    players: [
+      { id: 0, reserveCount: 11, stockCount: 30, wasteCount: 3 },
+      { id: 1, reserveCount: 13, stockCount: 35, wasteCount: 0 },
+    ],
+    tableau: [
+      [{ suit: "S", rank: 10 }],
+      [{ suit: "H", rank: 9 }],
+      [],
+      [{ suit: "C", rank: 8 }],
+      [{ suit: "D", rank: 7 }],
+      [],
+      [],
+      [{ suit: "S", rank: 6 }],
+    ],
+    foundations: [
+      [{ suit: "S", rank: 1 }, { suit: "S", rank: 2 }], // Spades up to 2
+      [],
+      [{ suit: "H", rank: 1 }], // Hearts up to 1
+      [],
+      [{ suit: "D", rank: 1 }, { suit: "D", rank: 2 }, { suit: "D", rank: 3 }], // Diamonds up to 3
+      [],
+      [],
+      [],
+    ],
+  };
+
+  const t = trackers(state);
+  assert.equal(t.you.reserve, 11);
+  assert.equal(t.you.stock, 30);
+  assert.equal(t.you.waste, 3);
+  assert.equal(t.them.reserve, 13);
+  assert.equal(t.them.stock, 35);
+  assert.equal(t.them.waste, 0);
+
+  // Foundations max rank (0 to 13)
+  assert.equal(t.foundations.S, 2);
+  assert.equal(t.foundations.H, 1);
+  assert.equal(t.foundations.D, 3);
+  assert.equal(t.foundations.C, 0);
+
+  // Tableau count
+  assert.equal(t.tableauTotal, 5);
+});
+
+test("HUD model: trackerTable produces columns and rows with tips and won looks", () => {
+  const t = {
+    you: { reserve: 0, stock: 10, waste: 2, tableau: 3 },
+    them: { reserve: 7, stock: 20, waste: 4, tableau: 2 },
+    foundations: { S: 13, H: 4, D: 2, C: 0 },
+    tableauTotal: 5,
+  };
+
+  const table = trackerTable(t);
+  assert.ok(table.columns.length >= 8, "Has at least 8 columns");
+  assert.ok(table.columns.some((c) => c.key === "reserve"), "Reserve column exists");
+  assert.ok(table.columns.some((c) => c.key === "spades"), "Spades column exists");
+
+  assert.equal(table.rows.length, 2);
+  const youRow = table.rows.find((r) => r.who === "you");
+  const themRow = table.rows.find((r) => r.who === "them");
+
+  assert.ok(youRow, "You row exists");
+  assert.ok(themRow, "Them row exists");
+
+  // Reserve cleared (0) should have won look
+  const youReserveCell = youRow.cells.find((c) => c.key === "reserve");
+  assert.equal(youReserveCell.text, "0");
+  assert.equal(youReserveCell.look, "won");
+
+  // Spades completed (13) should have won look
+  const spadesCell = youRow.cells.find((c) => c.key === "spades");
+  assert.equal(spadesCell.text, "13");
+  assert.equal(spadesCell.look, "won");
+});
+
+test("HUD creates Cassino-style floating scorebug in top-left (.info, .hud-slot) with 13 segments", () => {
+  const container = new MockElement("div");
+  const hud = new HUD({ container, document: { createElement: (tag) => new MockElement(tag) } });
+
+  const info = container.querySelector(".info");
+  const slot = container.querySelector(".hud-slot");
+  assert.ok(info, ".info top-left container exists");
+  assert.ok(slot, ".hud-slot exists");
+
+  const hudEl = slot.querySelector(".hud");
+  assert.ok(hudEl, ".hud element exists in slot");
+
+  // Segment lines for You (Crimson) and Opponent (Navy)
+  const lineYou = hudEl.querySelector(".hud-line.you");
+  const lineOpp = hudEl.querySelector(".hud-line.opp");
+  assert.ok(lineYou, "Crimson .hud-line.you exists");
+  assert.ok(lineOpp, "Navy .hud-line.opp exists");
+
+  // 13 segments in each line
+  const segsYou = lineYou.querySelectorAll(".seg");
+  const segsOpp = lineOpp.querySelectorAll(".seg");
+  assert.equal(segsYou.length, 13, "You line has 13 segments");
+  assert.equal(segsOpp.length, 13, "Opponent line has 13 segments");
+
+  // Active player badge
+  const badgeYou = hudEl.querySelector(".active-badge.you");
+  const badgeOpp = hudEl.querySelector(".active-badge.opp");
+  assert.ok(badgeYou, "You active badge exists");
+  assert.ok(badgeOpp, "Opponent active badge exists");
+
+  // Render state with activePlayer = 0 and reserve counts
+  const state = createMockGameState({ activePlayer: 0 });
+  state.players[0].reserveCount = 10; // 3 cleared
+  state.players[1].reserveCount = 12; // 1 cleared
+
+  hud.render(state, new MatchLedger());
+
+  const numYou = hudEl.querySelector("#reserve-num-you");
+  const numOpp = hudEl.querySelector("#reserve-num-opp");
+  assert.equal(numYou.textContent, "10", "You reserve number shows 10");
+  assert.equal(numOpp.textContent, "12", "Opponent reserve number shows 12");
+
+  // Active side badge spring state
+  const sideYou = hudEl.querySelector("#hud-side-you");
+  const sideOpp = hudEl.querySelector("#hud-side-opp");
+  assert.ok(sideYou.classList.contains("active"), "You side is active");
+  assert.ok(!sideOpp.classList.contains("active"), "Opponent side is inactive");
+});
+
+test("HUD creates collapsible aids/tracker panel at bottom-left", () => {
+  const container = new MockElement("div");
+  const hud = new HUD({ container, document: { createElement: (tag) => new MockElement(tag) } });
+
+  const panel = container.querySelector(".aids-panel");
+  assert.ok(panel, ".aids-panel exists at bottom-left");
+
+  const headBtn = panel.querySelector(".aids-head");
+  assert.ok(headBtn, "Aids heading button exists");
+
+  const table = panel.querySelector(".tracker-table");
+  assert.ok(table, ".tracker-table exists inside aids-panel");
+
+  // Click heading toggles fold
+  assert.equal(panel.classList.contains("folded"), false);
+  headBtn.click();
+  assert.equal(panel.classList.contains("folded"), true);
+  headBtn.click();
+  assert.equal(panel.classList.contains("folded"), false);
+});
+
+test("HUD celebration popups with M3 spring entrance and foundation celebrations", () => {
+  const container = new MockElement("div");
+  const doc = { createElement: (tag) => new MockElement(tag) };
+  const hud = new HUD({ container, document: doc });
+
+  const cheersContainer = container.querySelector(".cheers");
+  assert.ok(cheersContainer, ".cheers container exists for celebrations");
+
+  // Trigger celebration popup
+  const cheerNode = hud.celebrate({
+    label: "Ace of Spades (A♠)",
+    pts: "+1",
+    rank: 1,
+    suit: "S",
+  });
+
+  assert.ok(cheerNode, "Cheer popup node created");
+  assert.ok(cheerNode.classList.contains("cheer"), "Cheer node has .cheer class");
+  assert.ok(cheerNode.querySelector(".cheer-disc"), "Has .cheer-disc element");
+  assert.equal(cheerNode.querySelector(".cheer-disc").textContent, "Ace of Spades (A♠)");
+  assert.ok(cheerNode.querySelector(".cheer-burst"), "Has .cheer-burst element");
+  assert.equal(cheerNode.querySelector(".cheer-burst").textContent, "+1");
+});
+
+test("HUD move chips at bottom-center are formatted like Cassino selection chips", () => {
+  const container = new MockElement("div");
+  const hud = new HUD({ container, document: { createElement: (tag) => new MockElement(tag) } });
+
+  const moveBar = container.querySelector(".move-bar");
+  assert.ok(moveBar, ".move-bar exists");
+
+  const chips = moveBar.querySelector(".chips");
+  assert.ok(chips, ".chips container exists");
+
+  const places = moveBar.querySelectorAll(".place");
+  assert.ok(places.length >= 1, ".place groups exist inside .chips");
+
+  const drawChip = moveBar.querySelector("#draw-btn");
+  const wasteChip = moveBar.querySelector("#waste-btn");
+  const undoChip = moveBar.querySelector("#undo-btn");
+
+  assert.ok(drawChip, "Draw stock chip exists");
+  assert.ok(wasteChip, "Discard to waste chip exists");
+  assert.ok(undoChip, "Undo chip exists");
 });

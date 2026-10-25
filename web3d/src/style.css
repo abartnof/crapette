@@ -1,8 +1,11 @@
 /* Crapette (Russian Bank) — 3D & HUD Stylesheet */
 
 :root {
-  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-sans: var(--font);
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --md-ref-typeface-brand: var(--font);
+  --md-ref-typeface-plain: var(--font);
 
   /* Material Design 3 Color Tokens (Matching Cassino & Piquet @ #2f5da8 seed) */
   --md-sys-color-primary: #435e91;
@@ -13,34 +16,57 @@
   --md-sys-color-on-secondary: #ffffff;
   --md-sys-color-secondary-container: #dae2f9;
   --md-sys-color-on-secondary-container: #3f4759;
+  --md-sys-color-tertiary: #715574;
+  --md-sys-color-on-tertiary: #ffffff;
+  --md-sys-color-tertiary-container: #fbd7fc;
+  --md-sys-color-on-tertiary-container: #583e5b;
   --md-sys-color-error: #ba1a1a;
   --md-sys-color-on-error: #ffffff;
   --md-sys-color-error-container: #ffdad6;
   --md-sys-color-on-error-container: #93000a;
   
   /* Neutral surfaces and backgrounds */
-  --md-sys-color-surface: #121316;
-  --md-sys-color-on-surface: #e2e2e9;
-  --md-sys-color-surface-variant: #44474f;
-  --md-sys-color-on-surface-variant: #c4c6d0;
-  --md-sys-color-surface-container-lowest: #0c0d10;
-  --md-sys-color-surface-container-low: #17181c;
-  --md-sys-color-surface-container: #1b1c22;
-  --md-sys-color-surface-container-high: #25262c;
-  --md-sys-color-surface-container-highest: #303138;
+  --md-sys-color-surface: #f9f9ff;
+  --md-sys-color-on-surface: #1a1b20;
+  --md-sys-color-surface-variant: #e1e2ec;
+  --md-sys-color-on-surface-variant: #44474f;
+  --md-sys-color-surface-container-lowest: #ffffff;
+  --md-sys-color-surface-container-low: #f3f3fa;
+  --md-sys-color-surface-container: #ededf4;
+  --md-sys-color-surface-container-high: #e8e7ee;
+  --md-sys-color-surface-container-highest: #e2e2e9;
+  --md-sys-color-surface-dim: #d9d9e0;
+  --md-sys-color-surface-bright: #f9f9ff;
   --md-sys-color-outline: #74777f;
-  --md-sys-color-outline-variant: #3a3c42;
+  --md-sys-color-outline-variant: #c4c6d0;
+  --md-sys-color-inverse-surface: #2f3036;
+  --md-sys-color-inverse-on-surface: #f0f0f7;
+  --md-sys-color-inverse-primary: #acc7ff;
+  --md-sys-color-shadow: #000000;
+  --md-sys-color-scrim: #000000;
+  --md-sys-color-surface-tint: #435e91;
 
-  /* Semantically significant player and game state colors */
-  --cassino-you: #b3261e; /* Crimson Red / Player 0 */
-  --cassino-on-you: #ffffff;
-  --cassino-you-container: #ffd8d6;
-  --cassino-on-you-container: #410002;
+  /* Crapette Player 1 (Royal Crimson) */
+  --crapette-you: #b3261e;
+  --crapette-on-you: #ffffff;
+  --crapette-you-container: #ffd8d6;
+  --crapette-on-you-container: #410002;
 
-  --cassino-them: #2a5286; /* Navy Blue / Player 1 */
-  --cassino-on-them: #ffffff;
-  --cassino-them-container: #d7e2ff;
-  --cassino-on-them-container: #001b3f;
+  /* Crapette Player 2 (Midnight Navy) */
+  --crapette-them: #1a3b6b;
+  --crapette-on-them: #ffffff;
+  --crapette-them-container: #d7e2ff;
+  --crapette-on-them-container: #001b3f;
+
+  /* Sibling aliases */
+  --cassino-you: var(--crapette-you);
+  --cassino-on-you: var(--crapette-on-you);
+  --cassino-you-container: var(--crapette-you-container);
+  --cassino-on-you-container: var(--crapette-on-you-container);
+  --cassino-them: var(--crapette-them);
+  --cassino-on-them: var(--crapette-on-them);
+  --cassino-them-container: var(--crapette-them-container);
+  --cassino-on-them-container: var(--crapette-on-them-container);
 
   --color-hint: #e5a019;
   --color-hint-container: rgba(229, 160, 25, 0.15);
@@ -66,9 +92,16 @@
   --crapette-pulse-1: #ba1a1a;
   --crapette-pulse-2: #e5a019;
 
-  --elevation-1: 0 1px 3px rgba(0, 0, 0, 0.24), 0 1px 2px rgba(0, 0, 0, 0.16);
-  --elevation-2: 0 3px 6px rgba(0, 0, 0, 0.28), 0 2px 4px rgba(0, 0, 0, 0.18);
-  --elevation-3: 0 10px 20px rgba(0, 0, 0, 0.32), 0 3px 6px rgba(0, 0, 0, 0.22);
+  /* Material Design 3 Elevation Tokens */
+  --elevation-1: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+  --elevation-2: 0 1px 2px rgb(0 0 0 / 0.18), 0 3px 10px 2px rgb(0 0 0 / 0.08);
+  --elevation-3: 0 10px 20px rgba(0, 0, 0, 0.19), 0 6px 6px rgba(0, 0, 0, 0.23);
+
+  /* Material Design 3 Easing & Spring Tokens */
+  --ease: cubic-bezier(0.2, 0, 0, 1); /* M3 standard */
+  --ease-in: cubic-bezier(0.05, 0.7, 0.1, 1); /* M3 emphasized decelerate */
+  --ease-out: cubic-bezier(0.3, 0, 0.8, 0.15); /* M3 emphasized accelerate */
+  --spring: linear(0, 0.0201, 0.0719, 0.1441, 0.2281, 0.3173, 0.4069, 0.4933, 0.5741, 0.6478, 0.7137, 0.7716, 0.8215, 0.8638, 0.8991, 0.9281, 0.9514, 0.9699, 0.9842, 0.995, 1.0029, 1.0084, 1.012, 1.0141, 1.015, 1.0151, 1.0146, 1.0137, 1.0125, 1.0112, 1.0099, 1.0085, 1.0072, 1.006, 1.005, 1.004, 1.0032, 1.0025, 1.0019, 1.0014, 1);
 }
 
 * {
@@ -1122,3 +1155,927 @@ html, body {
   font-weight: 600;
   cursor: pointer;
 }
+
+/* ==========================================================================
+   MATERIAL DESIGN 3 CHROME, DIALOGS, CONTROLS & LOG DRAWER (CASSINO-STYLE)
+   ========================================================================== */
+
+/* Floating M3 Surface Container */
+.surface {
+  box-sizing: border-box;
+  pointer-events: auto;
+  background: var(--md-sys-color-surface-container-low);
+  border-radius: 20px;
+  box-shadow: var(--elevation-2);
+}
+
+/* Top Chrome Bar */
+.bar {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px 4px 16px;
+  border-radius: 28px;
+  z-index: 25;
+}
+
+.brand {
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  margin-right: 6px;
+  color: var(--md-sys-color-primary);
+  user-select: none;
+}
+
+.icon {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.icon.symbol {
+  fill: currentColor;
+  stroke: none;
+  color: var(--md-sys-color-on-surface-variant);
+  padding: 3px 0;
+}
+
+/* Material Design 3 Floating Dialogs */
+md-dialog {
+  pointer-events: auto;
+  --md-dialog-container-color: var(--md-sys-color-surface-container-high);
+  max-width: min(560px, calc(100vw - 32px));
+  z-index: 50;
+}
+
+.settings h3 {
+  font-size: 14px;
+  margin: 16px 0 6px;
+  color: var(--md-sys-color-primary);
+}
+
+.settings h3:first-child {
+  margin-top: 0;
+}
+
+.setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 0;
+  cursor: pointer;
+}
+
+.setting.talk-row {
+  flex-wrap: wrap;
+  cursor: default;
+}
+
+.setting-text {
+  display: grid;
+}
+
+.setting-title {
+  font-weight: 600;
+  color: var(--md-sys-color-on-surface);
+}
+
+.setting-words {
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 13px;
+}
+
+.selects,
+.starts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.selects md-outlined-select {
+  flex: 1 1 14rem;
+}
+
+.mode-set,
+.game-set {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.game-welcome {
+  margin: 0 0 8px;
+  color: var(--md-sys-color-on-surface);
+  font-size: 14px;
+}
+
+.credit {
+  margin-bottom: 12px;
+}
+
+.credit strong {
+  color: var(--md-sys-color-primary);
+  display: block;
+  margin-bottom: 2px;
+}
+
+.credit p {
+  margin: 2px 0;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* Bottom Controls & Move Bar */
+.controls {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 12px 16px 20px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 12px;
+  pointer-events: none;
+  z-index: 15;
+}
+
+.controls > * {
+  pointer-events: auto;
+}
+
+.controls .prompt,
+.controls .note {
+  flex-basis: 100%;
+  text-align: center;
+  margin: 0;
+  color: var(--md-sys-color-on-surface);
+  font-family: var(--font);
+}
+
+.controls .prompt {
+  max-width: min(100%, 520px);
+  margin: 0 auto;
+}
+
+.controls .note {
+  color: var(--crapette-you);
+  min-height: 1.2em;
+  font-weight: 600;
+}
+
+.controls .aid-line {
+  flex-basis: 100%;
+  margin: 0;
+  text-align: center;
+  color: var(--md-sys-color-primary);
+  font-weight: 600;
+}
+
+/* Action Move Bar */
+.move-bar {
+  flex-basis: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.move-bar[hidden] {
+  display: none;
+}
+
+.move-bar .chips {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.move-bar md-filled-button {
+  flex: 1 1 0;
+  min-width: 0;
+  --md-filled-button-container-height: var(--move-h, 44px);
+  --md-filled-button-container-shape: calc(var(--move-h, 44px) / 2);
+  --md-filled-button-label-text-size: calc(var(--move-h, 44px) * 0.38);
+  --md-filled-button-label-text-line-height: calc(var(--move-h, 44px) * 0.5);
+  --md-filled-button-label-text-weight: 600;
+}
+
+/* Game Log Drawer */
+.game-log {
+  position: fixed;
+  top: 68px;
+  right: 12px;
+  width: min(22rem, calc(100vw - 24px));
+  max-height: 48vh;
+  overflow: auto;
+  box-sizing: border-box;
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: var(--md-sys-color-surface-container-lowest);
+  box-shadow: var(--elevation-2);
+  pointer-events: auto;
+  font-size: 13px;
+  z-index: 25;
+  transition: transform 0.25s var(--ease), opacity 0.2s var(--ease);
+}
+
+.game-log[hidden] {
+  display: none !important;
+}
+
+.game-log h2 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--md-sys-color-on-surface-variant);
+  font-weight: 700;
+}
+
+.game-log ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.game-log .entry {
+  display: grid;
+  gap: 2px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  color: var(--md-sys-color-on-surface);
+}
+
+.game-log .entry .note-line {
+  padding-left: 8px;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.game-log .entry.crapette-call {
+  color: var(--crapette-you);
+  font-weight: 700;
+}
+
+/* Tooltips */
+.tip {
+  position: fixed;
+  z-index: 100;
+  max-width: min(260px, calc(100vw - 16px));
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--md-sys-color-surface-container-highest);
+  color: var(--md-sys-color-on-surface);
+  font-family: var(--font);
+  font-size: 12.5px;
+  line-height: 1.35;
+  box-shadow: var(--elevation-2);
+  pointer-events: none;
+}
+
+/* =========================================================================
+   Cassino-style Floating Scorebug, Trackers, Celebrations, and Selection Chips
+   ========================================================================= */
+
+/* Spring Easing Definitions (sampled for CSS linear()) */
+:root {
+  --sp-fast: linear(0, 0.048, 0.167, 0.323, 0.488, 0.646, 0.784, 0.896, 0.98, 1.038, 1.074, 1.091, 1.095, 1.088, 1.076, 1.061, 1.045, 1.03, 1.018, 1.008, 1, 0.995, 0.992, 0.991, 0.991, 0.992, 0.993, 0.995, 0.996, 0.997, 0.999, 0.999, 1);
+  --sp-def: linear(0, 0.03, 0.104, 0.204, 0.316, 0.43, 0.538, 0.638, 0.725, 0.8, 0.861, 0.911, 0.949, 0.978, 0.999, 1.013, 1.022, 1.027, 1.028, 1.028, 1.026, 1.023, 1.02, 1.017, 1.014, 1.011, 1.008, 1.006, 1.004, 1.003, 1.002, 1.001, 1, 1);
+  --sp-fx: linear(0, 0.018, 0.064, 0.127, 0.199, 0.274, 0.348, 0.42, 0.488, 0.551, 0.608, 0.659, 0.705, 0.745, 0.781, 0.812, 0.839, 0.863, 0.883, 0.901, 0.916, 0.929, 0.94, 0.949, 0.957, 0.964, 0.969, 0.974, 0.978, 0.982, 0.985, 0.987, 0.989, 0.991, 0.993, 0.994, 0.995, 0.996, 0.996, 1);
+}
+
+/* 1. Top-Left Floating Scorebug (.info, .hud-slot) */
+.info {
+  z-index: 20;
+  position: fixed;
+  top: 68px;
+  left: 12px;
+  width: min(440px, calc(100vw - 24px));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.info .hud-slot {
+  pointer-events: auto;
+}
+
+.hud {
+  box-sizing: border-box;
+  padding: 14px 16px 12px;
+  border-radius: 20px;
+  background: rgba(27, 31, 36, 0.92);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: var(--elevation-2);
+  color: #f2f4f6;
+  font-family: var(--font-sans);
+  pointer-events: auto;
+}
+
+.hud-top {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.hud-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hud-side {
+  display: grid;
+  grid-template-columns: 88px 1fr;
+  align-items: center;
+  gap: 8px;
+  transition: transform 460ms var(--sp-fast);
+}
+
+.hud-name-group {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* Active Player Badge with Spring Transition */
+.active-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  transform: scale(0.6) translateX(-6px);
+  opacity: 0;
+  transition: transform 460ms var(--sp-fast), opacity 200ms var(--sp-fx);
+}
+
+.hud-side.active .active-badge {
+  transform: scale(1.15) translateX(0);
+  opacity: 1;
+}
+
+.active-badge.you {
+  color: #ff897d;
+}
+
+.active-badge.opp {
+  color: #82aaff;
+}
+
+.hud-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #9aa3ad;
+  letter-spacing: 0.02em;
+}
+
+.hud-side.active .hud-name.you {
+  color: #ff897d;
+}
+
+.hud-side.active .hud-name.opp {
+  color: #82aaff;
+}
+
+.hud-block {
+  position: relative;
+  height: 32px;
+  overflow: hidden;
+}
+
+.hud-score {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 10px;
+  transition: transform 460ms var(--sp-fast) 120ms, opacity 140ms var(--sp-fx) 120ms;
+}
+
+.hud-line {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  height: 20px;
+  gap: 2.5px;
+}
+
+.hud-line.you {
+  --fill: #b3261e;
+  --cur: #ff897d;
+  --peak: #ffd8d6;
+  --dark: #2f363d;
+}
+
+.hud-line.opp {
+  --fill: #2a5286;
+  --cur: #82aaff;
+  --peak: #d7e2ff;
+  --dark: #2f363d;
+}
+
+.seg {
+  box-sizing: border-box;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 4px;
+  border-radius: 4px;
+  background-color: var(--dark);
+  transition: height 460ms var(--sp-fast), background-color 200ms var(--sp-fx);
+}
+
+.seg.reached {
+  height: 6px;
+  background-color: var(--fill);
+}
+
+.seg.cursor {
+  height: 12px;
+  background-color: var(--cur);
+}
+
+.seg.lighting {
+  transition: none;
+  animation: seg-light 760ms ease-out backwards;
+}
+
+@keyframes seg-light {
+  0% {
+    height: 4px;
+    background-color: var(--dark);
+  }
+  38% {
+    height: 18px;
+    background-color: var(--peak);
+    animation-timing-function: var(--sp-fast);
+  }
+}
+
+.hud-num {
+  min-width: 2ch;
+  font-size: 22px;
+  line-height: 32px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #f7f8fa;
+  text-align: right;
+}
+
+.hud-num.you {
+  color: #ff897d;
+}
+
+.hud-num.opp {
+  color: #82aaff;
+}
+
+.hud-chev {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 0;
+  border-radius: 19px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background: #2b3138;
+  color: #f2f4f6;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-radius 520ms var(--sp-def), background-color 200ms var(--sp-fx), color 200ms var(--sp-fx), transform 150ms var(--sp-fx);
+}
+
+.hud.open .hud-chev {
+  border-radius: 12px;
+  background: #e8ebef;
+  color: #121417;
+}
+
+.hud-chev svg {
+  display: block;
+  transition: transform 460ms var(--sp-fast);
+}
+
+.hud.open .hud-chev svg {
+  transform: rotate(180deg);
+}
+
+.hud-panel {
+  display: none;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  margin-top: 10px;
+}
+
+.hud.open .hud-panel {
+  display: block;
+  animation: hud-panel-in 340ms var(--sp-def);
+}
+
+@keyframes hud-panel-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.hud-rule {
+  height: 1px;
+  background: #2a3037;
+  margin: 6px 0;
+}
+
+.hud-head {
+  display: flex;
+  align-items: center;
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+  color: #9aa3ad;
+  padding: 0 4px;
+}
+
+.hud-head-you, .hud-head-opp {
+  flex: 1 1 0;
+}
+
+.hud-head-opp {
+  text-align: right;
+}
+
+.hud-mid {
+  flex: none;
+  width: 100px;
+  text-align: center;
+  font-size: 11.5px;
+  color: #9aa3ad;
+}
+
+.hud-list {
+  max-height: 160px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 0;
+}
+
+.hud-ln {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  padding: 0 4px;
+}
+
+.hud-v.you {
+  flex: 1 1 0;
+  color: #ff897d;
+}
+
+.hud-v.opp {
+  flex: 1 1 0;
+  text-align: right;
+  color: #82aaff;
+}
+
+.hud-total {
+  display: flex;
+  align-items: center;
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  padding: 2px 4px;
+}
+
+.hud-tot-you {
+  flex: 1 1 0;
+  color: #ff897d;
+}
+
+.hud-tot-opp {
+  flex: 1 1 0;
+  text-align: right;
+  color: #82aaff;
+}
+
+/* 2. Collapsible Aids/Trackers Panel at Bottom-Left (.aids-panel) */
+.aids-panel {
+  z-index: 20;
+  position: fixed;
+  left: 12px;
+  bottom: 16px;
+  width: min(440px, calc(100vw - 24px));
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 14px 12px;
+  border-radius: 20px;
+  background: rgba(27, 31, 36, 0.94);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: var(--elevation-2);
+  color: #f2f4f6;
+  pointer-events: auto;
+  transition: width 340ms var(--sp-def), padding 340ms var(--sp-def);
+}
+
+.aids-panel.folded {
+  width: auto;
+  padding: 8px 14px;
+}
+
+.aids-heading {
+  margin: 0;
+}
+
+.aids-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.aids-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #9aa3ad;
+}
+
+.aids-fold {
+  display: grid;
+  place-items: center;
+  color: #9aa3ad;
+}
+
+.aids-fold .chevron-icon {
+  display: block;
+  transition: transform 320ms var(--sp-fast);
+}
+
+.aids-panel.folded .aids-fold .chevron-icon {
+  transform: rotate(-90deg);
+}
+
+.tracker-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 3px;
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.tracker-table th {
+  font-size: 11px;
+  font-weight: 600;
+  color: #9aa3ad;
+  padding: 2px 4px;
+  white-space: nowrap;
+}
+
+.tracker-table thead th {
+  text-align: center;
+}
+
+.tracker-table tbody th {
+  text-align: left;
+  font-size: 12px;
+}
+
+.tracker-table tr.you th {
+  color: #ff897d;
+  font-weight: 700;
+}
+
+.tracker-table tr.them th {
+  color: #82aaff;
+  font-weight: 700;
+}
+
+.tracker-table td {
+  padding: 3px 5px;
+  border-radius: 6px;
+  background: #25292e;
+  color: #f2f4f6;
+  font-size: 12.5px;
+  text-align: center;
+  font-weight: 600;
+  transition: background-color 200ms ease;
+}
+
+.tracker-table td.won {
+  background: #2e7d32;
+  color: #ffffff;
+  box-shadow: 0 0 6px rgba(46, 125, 50, 0.45);
+}
+
+/* 3. Celebration Popups with M3 Spring Entrance (.cheers, .cheer) */
+.cheers {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.cheer {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.cheer-disc {
+  position: absolute;
+  left: -54px;
+  top: -54px;
+  width: 108px;
+  height: 108px;
+  box-sizing: border-box;
+  padding: 10px;
+  display: grid;
+  place-items: center;
+  border: 3px solid #ffffff;
+  border-radius: 50%;
+  background: #1b1f24;
+  color: #ffffff;
+  box-shadow: 0 0 0 2px #1b1f24, 0 10px 24px rgba(0, 0, 0, 0.45);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.15;
+  text-align: center;
+  animation:
+    cheer-in 380ms var(--sp-fast) both,
+    cheer-out 280ms ease-out 1450ms forwards;
+}
+
+.cheer-burst {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-family: var(--font-sans);
+  font-size: 26px;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+  color: #ffffff;
+  -webkit-text-stroke: 2px #1b1f24;
+  paint-order: stroke fill;
+  text-shadow: 0 3px 0 #1b1f24;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.3);
+  animation: cheer-burst 1250ms linear forwards;
+  animation-delay: calc(140ms + var(--k, 0) * 35ms);
+}
+
+@keyframes cheer-in {
+  from {
+    transform: scale(0.2);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes cheer-out {
+  to {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+}
+
+@keyframes cheer-burst {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.4);
+    animation-timing-function: cubic-bezier(0.1, 0.8, 0.3, 1);
+  }
+  6% {
+    opacity: 1;
+  }
+  20% {
+    opacity: 1;
+    transform: translate(calc(-50% + var(--dx, 0px) * 0.75), calc(-50% + var(--dy, 0px) * 0.75)) rotate(calc(var(--rot, 0deg) * 0.7)) scale(1.15);
+    animation-timing-function: cubic-bezier(0.2, 0.6, 0.4, 1);
+  }
+  60% {
+    opacity: 0.9;
+    transform: translate(calc(-50% + var(--dx, 0px) * 0.95), calc(-50% + var(--dy, 0px) * 0.95 + 6px)) rotate(var(--rot, 0deg)) scale(1);
+    animation-timing-function: ease-in;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, 0px) + 18px)) rotate(var(--rot, 0deg)) scale(0.7);
+  }
+}
+
+/* 4. Selection Chips Formatted like Cassino (.move-bar, .chip) */
+.move-bar {
+  position: fixed;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+}
+
+.move-bar .chips {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.move-bar .place {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.move-bar .chip {
+  min-height: 44px;
+  padding: 0 20px;
+  border-radius: 22px;
+  font-family: var(--font-sans);
+  font-size: 14.5px;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #25262c;
+  color: #e2e2e9;
+  cursor: pointer;
+  outline: 1px solid rgba(27, 31, 36, 0.3);
+  outline-offset: 0;
+  transition: background-color 180ms ease, transform 120ms ease, border-color 180ms ease, opacity 180ms ease;
+  box-shadow: var(--elevation-1);
+}
+
+.move-bar .chip:hover:not(:disabled) {
+  background: #32343c;
+  border-color: rgba(255, 255, 255, 0.28);
+  transform: translateY(-1px);
+}
+
+.move-bar .chip:active:not(:disabled) {
+  background: #1c1d22;
+  transform: translateY(1px);
+}
+
+.move-bar .chip:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+/* Prominent CALL CRAPETTE! Button with Pulsing Alert */
+.crapette-btn.eligible {
+  animation: crapette-pulse 1.2s infinite ease-in-out, crapette-shake 2.8s infinite ease-in-out;
+  border-color: #ff5449;
+  background: linear-gradient(135deg, #ba1a1a 0%, #93000a 100%);
+  box-shadow: 0 0 24px rgba(186, 26, 26, 0.6), 0 0 10px rgba(229, 160, 25, 0.5);
+  cursor: pointer;
+}
+
+@keyframes crapette-pulse {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(186, 26, 26, 0.7); }
+  50% { transform: scale(1.05); box-shadow: 0 0 0 16px rgba(186, 26, 26, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(186, 26, 26, 0); }
+}
+
+@keyframes crapette-shake {
+  0%, 85%, 100% { transform: scale(1); }
+  88% { transform: scale(1.05) rotate(-2deg); }
+  92% { transform: scale(1.05) rotate(2deg); }
+  96% { transform: scale(1.05) rotate(-1deg); }
+}
+
+

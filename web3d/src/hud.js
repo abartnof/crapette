@@ -1,6 +1,203 @@
-// HUD interface, Material Design 3 surfaces, and Cassino-style card badges for Crapette
+// HUD interface, Material Design 3 surfaces, and Cassino-style card badges for Crapette (Russian Bank)
 
 import { AI_SKILLS } from "../../src/engine/ai.js";
+import {
+  createOverlay,
+  trackers,
+  trackerTable,
+  foundationSuitCounts,
+  celebrate,
+  celebrationOf,
+  COLUMNS,
+  SUITS,
+  SUIT_NAMES,
+  SUIT_GLYPHS,
+} from "./overlay.js";
+
+export {
+  createOverlay,
+  trackers,
+  trackerTable,
+  foundationSuitCounts,
+  celebrate,
+  celebrationOf,
+  COLUMNS,
+  SUITS,
+  SUIT_NAMES,
+  SUIT_GLYPHS,
+};
+
+export const RESERVE_TOTAL = 13;
+
+// Segment state for 1-based index n vs count (0 to total)
+export function segmentState(n, count, total = RESERVE_TOTAL) {
+  const c = Math.max(0, Math.min(total, count));
+  if (c <= 0) return "unreached";
+  return n < c ? "reached" : n === c ? "cursor" : "unreached";
+}
+
+// Reserve progress: 13 down to 0 remaining means 0 up to 13 cleared
+export function reserveSegmentState(n, reserveCount, total = RESERVE_TOTAL) {
+  const cleared = Math.max(0, Math.min(total, total - reserveCount));
+  return segmentState(n, cleared, total);
+}
+
+// Floating Scorebug widget (placed in .info > .hud-slot)
+export function createHud(root, {
+  later = (ms, fn) => setTimeout(fn, ms),
+  onToggle = () => {},
+  document = globalThis.document,
+} = {}) {
+  const el = (tag, attrs = {}, ...children) => {
+    const node = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (k === "className" || k === "class") node.className = v;
+      else if (k === "id") node.id = v;
+      else node.setAttribute(k, v);
+    }
+    for (const c of children) {
+      if (c) node.append(c);
+    }
+    return node;
+  };
+
+  const lines = { you: [], opp: [] };
+  const line = (side) => {
+    const row = el("div", { className: `hud-line ${side}` });
+    for (let n = 1; n <= RESERVE_TOTAL; n++) {
+      const seg = el("div", { className: "seg unreached" });
+      if (n > 1 && seg.style && typeof seg.style.setProperty === "function") {
+        seg.style.marginLeft = (n - 1) % 5 === 0 ? "8px" : "3px";
+      }
+      lines[side].push(seg);
+      row.append(seg);
+    }
+    return row;
+  };
+
+  const block = (side, nameText) => {
+    const activeBadge = el("span", { className: `active-badge ${side}`, "aria-hidden": "true" }, "▶");
+    const nameNode = el("span", { className: `hud-name ${side}` }, nameText);
+    const nameGroup = el("div", { className: "hud-name-group" }, activeBadge, nameNode);
+
+    const num = el("div", { className: `hud-num ${side}`, id: `reserve-num-${side}` }, "13");
+    const score = el("div", { className: "hud-score" }, line(side), num);
+    const popLabel = el("span", { className: "hud-pop-label" });
+    const popPts = el("span", { className: "hud-pop-pts" });
+    const pop = el("div", { className: "hud-pop", "aria-live": "polite" }, popLabel, popPts);
+    const stage = el("div", { className: `hud-block ${side}` }, score, pop);
+    const row = el("div", { className: `hud-side ${side}`, id: `hud-side-${side}` }, nameGroup, stage);
+    return { node: stage, row, nameGroup, activeBadge, nameNode, num, popLabel, popPts };
+  };
+
+  const blocks = {
+    opp: block("opp", "Opponent"),
+    you: block("you", "You"),
+  };
+
+  const linesNode = el("div", { className: "hud-lines", role: "img" }, blocks.opp.row, blocks.you.row);
+  const chevron = el("button", {
+    className: "hud-chev",
+    type: "button",
+    "aria-expanded": "false",
+    "aria-label": "Show match ledger scores",
+  });
+  chevron.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>`;
+
+  const headYou = el("div", { className: "hud-head-you" }, "You (Crimson)");
+  const headOpp = el("div", { className: "hud-head-opp" }, "Opponent (Navy)");
+  const list = el("div", { className: "hud-list", id: "hud-deals-list" });
+  const totYou = el("div", { className: "hud-tot-you", id: "hud-tot-you" }, "0");
+  const totOpp = el("div", { className: "hud-tot-opp", id: "hud-tot-opp" }, "0");
+
+  const panel = el("div", { className: "hud-panel" },
+    el("div", { className: "hud-panel-inner" },
+      el("div", { className: "hud-rule" }),
+      el("div", { className: "hud-head" }, headYou, el("div", { className: "hud-mid" }, "Deals"), headOpp),
+      list,
+      el("div", { className: "hud-rule" }),
+      el("div", { className: "hud-total" }, totYou, el("div", { className: "hud-mid" }, "Total Score"), totOpp)
+    )
+  );
+
+  const hud = el("section", { className: "hud", "aria-label": "The scorebug and reserve progress" },
+    el("div", { className: "hud-top" }, linesNode, chevron),
+    panel
+  );
+
+  root.append(hud);
+
+  let open = false;
+  function setOpen(next) {
+    if (next === open) return;
+    open = next;
+    hud.classList.toggle("open", open);
+    chevron.setAttribute("aria-expanded", String(open));
+    chevron.setAttribute("aria-label", open ? "Hide match ledger scores" : "Show match ledger scores");
+    panel.style.display = open ? "block" : "none";
+    onToggle(open);
+  }
+  chevron.addEventListener("click", () => setOpen(!open));
+
+  function updateSegments(side, reserveRemaining) {
+    const segs = lines[side];
+    segs.forEach((seg, i) => {
+      const n = i + 1;
+      const st = reserveSegmentState(n, reserveRemaining, RESERVE_TOTAL);
+      seg.className = `seg ${st}`;
+    });
+  }
+
+  function render(state, ledger) {
+    if (!state) return;
+    const p0 = state.players?.[0] || {};
+    const p1 = state.players?.[1] || {};
+
+    const youReserve = p0.reserveCount ?? 13;
+    const oppReserve = p1.reserveCount ?? 13;
+
+    blocks.you.num.textContent = String(youReserve);
+    blocks.opp.num.textContent = String(oppReserve);
+
+    updateSegments("you", youReserve);
+    updateSegments("opp", oppReserve);
+
+    // Active player badge with spring transition
+    const isPlayer0Active = state.activePlayer === 0;
+    blocks.you.row.classList.toggle("active", isPlayer0Active);
+    blocks.opp.row.classList.toggle("active", !isPlayer0Active);
+
+    // Ledger totals
+    if (ledger) {
+      totYou.textContent = String(ledger.totals?.[0] ?? 0);
+      totOpp.textContent = String(ledger.totals?.[1] ?? 0);
+      totYou.classList.toggle("lead", (ledger.totals?.[0] ?? 0) > (ledger.totals?.[1] ?? 0));
+      totOpp.classList.toggle("lead", (ledger.totals?.[1] ?? 0) > (ledger.totals?.[0] ?? 0));
+
+      if (ledger.history && list) {
+        list.replaceChildren(
+          ...ledger.history.map((h, i) => {
+            const row = el("div", { className: "hud-ln" },
+              el("div", { className: "hud-v you" }, String(h.scores?.[0] ?? 0)),
+              el("div", { className: "hud-mid" }, `Deal ${i + 1}`),
+              el("div", { className: "hud-v opp" }, String(h.scores?.[1] ?? 0))
+            );
+            return row;
+          })
+        );
+      }
+    }
+  }
+
+  return {
+    node: hud,
+    blocks,
+    lines,
+    setOpen,
+    isOpen: () => open,
+    render,
+  };
+}
 
 export class HUD {
   constructor({
@@ -43,11 +240,13 @@ export class HUD {
     this.onDismissTutorial = onDismissTutorial;
 
     this.isMuted = false;
-    this.currentSkill = "4.0"; // numeric or "master" | "novice"
-    this.gameMode = "human_vs_ai"; // "human_vs_ai" | "ai_vs_ai"
-    this.rulesMode = "competitive"; // "competitive" | "casual"
+    this.currentSkill = "4.0";
+    this.gameMode = "human_vs_ai";
+    this.rulesMode = "competitive";
     this.currentFelt = "slate";
     this.currentTutorialPage = null;
+
+    this._lastFoundationCounts = { S: 0, H: 0, D: 0, C: 0 };
 
     this._initDOM();
   }
@@ -142,10 +341,23 @@ export class HUD {
     const banner = this._el("div", { className: "hud-banner", id: "status-banner", text: "Your Turn — Make moves or Draw Stock" });
     const bannerBox = this._el("div", { className: "hud-banner-box" }, banner);
 
-    // 3. Card Pile Badges Container (Cassino-style .badge floating discs)
-    const badgesContainer = this._el("div", { className: "badges" });
+    // 3. 2D Overlay layer (Info slot, Cheers celebrations, Aids panel, Move bar)
+    this.overlay = createOverlay(root, {
+      document: this.doc,
+      onDraw: () => { if (this.onDraw) this.onDraw(); },
+      onWaste: () => { if (this.onWaste) this.onWaste(); },
+      onCrapette: () => { if (this.onCrapette) this.onCrapette(); },
+      onUndo: () => { if (this.onUndo) this.onUndo(); },
+    });
 
-    // Opponent badges
+    // 4. Floating scorebug inside .info > .hud-slot
+    this.scorebug = createHud(this.overlay.hudSlot, {
+      document: this.doc,
+    });
+
+    // 5. Card Pile Badges (.badges)
+    const badgesContainer = this.overlay.badges;
+
     const badgeOppR = this._el("div", { className: "badge badge-reserve opp", id: "badge-opp-reserve", text: "13" });
     badgeOppR.setAttribute("title", "Opponent Reserve: 13 cards remaining");
     const badgeOppS = this._el("div", { className: "badge badge-stock opp", id: "badge-opp-stock", text: "35" });
@@ -153,7 +365,6 @@ export class HUD {
     const badgeOppW = this._el("div", { className: "badge badge-waste opp", id: "badge-opp-waste", text: "0" });
     badgeOppW.setAttribute("title", "Opponent Waste pile");
 
-    // You badges
     const badgeYouR = this._el("div", { className: "badge badge-reserve you", id: "badge-you-reserve", text: "13" });
     badgeYouR.setAttribute("title", "Your Reserve: 13 cards remaining");
     const badgeYouS = this._el("div", { className: "badge badge-stock you", id: "badge-you-stock", text: "35" });
@@ -186,39 +397,10 @@ export class HUD {
 
     const countersOverlay = this._el("div", { className: "hud-counters-overlay" }, oppStrip, youStrip);
 
-    // 4. Action Move Bar: prominent "CALL CRAPETTE!" button + action buttons
-    const crapetteGlow = this._el("span", { className: "btn-glow" });
-    const crapetteText = this._el("span", { className: "btn-text", text: "CALL CRAPETTE!" });
-    const crapetteSub = this._el("span", { className: "btn-subtext", text: "Claim Blunder & Seize Turn" });
-    const crapetteBtn = this._el("button", { className: "crapette-btn", id: "crapette-btn" }, crapetteGlow, crapetteText, crapetteSub);
-    crapetteBtn.addEventListener("click", () => {
-      if (this.onCrapette) this.onCrapette();
-    });
-
-    const drawBtn = this._el("button", { className: "hud-action-btn", id: "draw-btn", text: "Draw Stock" });
-    drawBtn.addEventListener("click", () => {
-      if (this.onDraw) this.onDraw();
-    });
-
-    const wasteBtn = this._el("button", { className: "hud-action-btn", id: "waste-btn", text: "Discard to Waste" });
-    wasteBtn.disabled = true;
-    wasteBtn.addEventListener("click", () => {
-      if (this.onWaste) this.onWaste();
-    });
-
-    const undoBtn = this._el("button", { className: "hud-action-btn", id: "undo-btn", text: "Undo" });
-    undoBtn.disabled = true;
-    undoBtn.addEventListener("click", () => {
-      if (this.onUndo) this.onUndo();
-    });
-
-    const subActions = this._el("div", { className: "hud-sub-actions" }, drawBtn, wasteBtn, undoBtn);
-    const actionPanel = this._el("div", { className: "hud-action-panel move-bar" }, crapetteBtn, subActions);
-
-    // 5. Toast container
+    // 6. Toast container
     const toastContainer = this._el("div", { className: "hud-toast-container", id: "toast-container" });
 
-    // 6. Modals
+    // 7. Modals
     const rulesModal = this._createRulesModal();
     const newGameModal = this._createNewGameModal();
     const settingsModal = this._createSettingsModal();
@@ -228,9 +410,7 @@ export class HUD {
     root.append(
       header,
       bannerBox,
-      badgesContainer,
       countersOverlay,
-      actionPanel,
       toastContainer,
       rulesModal,
       newGameModal,
@@ -238,12 +418,24 @@ export class HUD {
       hintModal,
       tutorialModal
     );
+
     this.container.append(root);
   }
 
-  // -------------------------------------------------------------
-  // New Game Menu (settings that define a new match)
-  // -------------------------------------------------------------
+  celebrate(opts) {
+    if (this.overlay) {
+      return this.overlay.celebrate(opts);
+    }
+    return null;
+  }
+
+  celebrateFoundation(card, x, y) {
+    if (this.overlay) {
+      return this.overlay.celebrateFoundation(card, x, y);
+    }
+    return null;
+  }
+
   _createNewGameModal() {
     const modal = this._el("div", { className: "hud-modal-backdrop", id: "new-game-modal" });
     modal.style.display = "none";
@@ -256,7 +448,6 @@ export class HUD {
     const title = this._el("h2", { text: "New Match Setup" });
     const sub = this._el("p", { className: "modal-sub", text: "Configure match rules, opponent skill, and tutorials before dealing." });
 
-    // 1. Mode select
     const modeLabel = this._el("label", { className: "setting-label", text: "Game Mode:" });
     const modeSelect = this._el("select", { className: "hud-select", id: "new-game-mode" });
     const optPlay = this._el("option", { text: "Play vs Computer" });
@@ -266,7 +457,6 @@ export class HUD {
     modeSelect.append(optPlay, optWatch);
     const modeRow = this._el("div", { className: "setting-row" }, modeLabel, modeSelect);
 
-    // 2. Rules variant
     const ruleLabel = this._el("label", { className: "setting-label", text: "Rule Ruleset:" });
     const ruleSelect = this._el("select", { className: "hud-select", id: "new-game-rules" });
     const optComp = this._el("option", { text: "Strict Russian Bank (Compulsory foundations & Crapette! calls)" });
@@ -276,7 +466,6 @@ export class HUD {
     ruleSelect.append(optComp, optCas);
     const ruleRow = this._el("div", { className: "setting-row" }, ruleLabel, ruleSelect);
 
-    // 3. AI Skill Slider (1.0 to 4.0 in steps of 0.5)
     const skillLabel = this._el("label", { className: "setting-label", text: "AI Skill Level:" });
     const skillSlider = this._el("input", { className: "hud-slider", id: "new-game-skill" });
     skillSlider.type = "range";
@@ -300,28 +489,24 @@ export class HUD {
 
     const skillGroup = this._el("div", { className: "setting-group" }, skillLabel, skillSlider, skillDesc);
 
-    // 4. Tutorial toggle
     const tutCheck = this._el("input", { id: "new-game-tutorial" });
     tutCheck.type = "checkbox";
     tutCheck.checked = true;
     const tutLabel = this._el("label", { text: "Show progressive tutorial popups before new features appear" });
     const tutRow = this._el("div", { className: "setting-checkbox-row" }, tutCheck, tutLabel);
 
-    // 5. Strategic hints toggle
     const hintsCheck = this._el("input", { id: "new-game-hints" });
     hintsCheck.type = "checkbox";
     hintsCheck.checked = true;
     const hintsLabel = this._el("label", { text: "Enable Vygotsky ZPD strategic hints during play" });
     const hintsRow = this._el("div", { className: "setting-checkbox-row" }, hintsCheck, hintsLabel);
 
-    // 6. Custom deal seed
     const seedLabel = this._el("label", { className: "setting-label", text: "Deal Seed (optional):" });
     const seedInput = this._el("input", { className: "hud-input", id: "new-game-seed" });
     seedInput.type = "text";
     seedInput.placeholder = "Leave empty for random shuffle";
     const seedRow = this._el("div", { className: "setting-row" }, seedLabel, seedInput);
 
-    // Action button
     const startBtn = this._el("button", { className: "hud-modal-btn primary", id: "new-game-start-btn", text: "Deal Cards & Start" });
     startBtn.addEventListener("click", () => {
       const mode = modeSelect.value;
@@ -364,9 +549,6 @@ export class HUD {
     }
   }
 
-  // -------------------------------------------------------------
-  // In-Game Settings Menu (things changed on the fly)
-  // -------------------------------------------------------------
   _createSettingsModal() {
     const modal = this._el("div", { className: "hud-modal-backdrop", id: "settings-modal" });
     modal.style.display = "none";
@@ -378,7 +560,6 @@ export class HUD {
 
     const title = this._el("h2", { text: "Game Settings (On the Fly)" });
 
-    // Sound toggle & volume
     const soundToggleBtn = this._el("button", {
       className: "hud-btn tonal",
       id: "settings-sound-toggle",
@@ -402,14 +583,12 @@ export class HUD {
     });
     const soundRow = this._el("div", { className: "setting-group" }, soundToggleBtn, volLabel, volSlider);
 
-    // Visual drop highlights
     const hlCheck = this._el("input", { id: "settings-highlights" });
     hlCheck.type = "checkbox";
     hlCheck.checked = true;
     const hlLabel = this._el("label", { text: "Highlight legal target slots on card selection" });
     const hlRow = this._el("div", { className: "setting-checkbox-row" }, hlCheck, hlLabel);
 
-    // Table Felt selector
     const feltLabel = this._el("label", { className: "setting-label", text: "Tabletop Felt:" });
     const feltSelect = this._el("select", { className: "hud-select", id: "settings-felt-select" });
     const optSlate = this._el("option", { text: "Slate Forest Felt (Cassino)" });
@@ -427,7 +606,6 @@ export class HUD {
     });
     const feltRow = this._el("div", { className: "setting-row" }, feltLabel, feltSelect);
 
-    // Card face design
     const cardFacesLabel = this._el("label", { className: "setting-label", text: "Card Art:" });
     const cardFacesSelect = this._el("select", { className: "hud-select", id: "settings-card-faces" });
     const optFaceClassic = this._el("option", { text: "Classic Inked Faces & Spanish Lace Back" });
@@ -440,7 +618,6 @@ export class HUD {
     });
     const cardFacesRow = this._el("div", { className: "setting-row" }, cardFacesLabel, cardFacesSelect);
 
-    // Reset Tutorial Progress button
     const resetTutBtn = this._el("button", {
       className: "hud-btn outline",
       id: "settings-reset-tutorial",
@@ -465,9 +642,6 @@ export class HUD {
     }
   }
 
-  // -------------------------------------------------------------
-  // ZPD Pedagogical Hint Modal / Card
-  // -------------------------------------------------------------
   _createHintModal() {
     const modal = this._el("div", { className: "hud-modal-backdrop", id: "hint-modal" });
     modal.style.display = "none";
@@ -525,9 +699,6 @@ export class HUD {
     if (modal) modal.style.display = "none";
   }
 
-  // -------------------------------------------------------------
-  // Progressive Tutorial Modal
-  // -------------------------------------------------------------
   _createTutorialModal() {
     const modal = this._el("div", { className: "hud-modal-backdrop", id: "tutorial-modal" });
     modal.style.display = "none";
@@ -607,9 +778,6 @@ export class HUD {
     this.currentTutorialPage = null;
   }
 
-  // -------------------------------------------------------------
-  // Rules modal
-  // -------------------------------------------------------------
   _createRulesModal() {
     const modal = this.doc.createElement("div");
     modal.className = "hud-modal-backdrop";
@@ -705,7 +873,31 @@ export class HUD {
   render(state, ledger) {
     if (!state || !this.container) return;
 
-    // 1. Ledger & scores
+    // 1. Floating Scorebug
+    if (this.scorebug) {
+      this.scorebug.render(state, ledger);
+    }
+
+    // 2. Trackers Panel in Overlay
+    const isAiVsAi = this.gameMode === "ai_vs_ai";
+    const trackerData = trackers(state);
+    if (this.overlay) {
+      this.overlay.renderTrackers(trackerData, isAiVsAi);
+
+      // Check for newly placed foundation cards to trigger celebrations
+      if (state.foundations) {
+        for (const suit of SUITS) {
+          const current = trackerData.foundations[suit] || 0;
+          const prev = this._lastFoundationCounts[suit] || 0;
+          if (current > prev) {
+            this.overlay.celebrateFoundation({ rank: current, suit });
+          }
+        }
+      }
+      this._lastFoundationCounts = { ...trackerData.foundations };
+    }
+
+    // 3. Header ledger & scores
     const dealCountEl = this.container.querySelector("#deal-count");
     if (dealCountEl && ledger) {
       dealCountEl.textContent = `Deal ${ledger.dealCount + 1}`;
@@ -718,7 +910,7 @@ export class HUD {
       scoreOppEl.textContent = String(ledger.totals[1]);
     }
 
-    // 2. Pile counts
+    // 4. Pile counts in strips
     const p0 = state.players[0];
     const p1 = state.players[1];
 
@@ -738,7 +930,7 @@ export class HUD {
     if (oppStock) oppStock.textContent = String(p1.stockCount);
     if (oppWaste) oppWaste.textContent = String(p1.wasteCount);
 
-    // 3. Cassino-style Card Badges (.badge)
+    // 5. Badges
     const badgeYouR = this.container.querySelector("#badge-you-reserve");
     const badgeYouS = this.container.querySelector("#badge-you-stock");
     const badgeYouW = this.container.querySelector("#badge-you-waste");
@@ -755,7 +947,7 @@ export class HUD {
     if (badgeOppS) badgeOppS.textContent = String(p1.stockCount);
     if (badgeOppW) badgeOppW.textContent = String(p1.wasteCount);
 
-    // 4. Active player strip highlight
+    // 6. Active player strip
     const youStrip = this.container.querySelector("#you-strip");
     const oppStrip = this.container.querySelector("#opp-strip");
     if (youStrip && oppStrip) {
@@ -768,14 +960,13 @@ export class HUD {
       }
     }
 
-    // 5. Action button states
+    // 7. Action selection chips in move-bar
+    const isHumanTurn = !isAiVsAi && state.activePlayer === 0;
+
     const drawBtn = this.container.querySelector("#draw-btn");
     const wasteBtn = this.container.querySelector("#waste-btn");
     const undoBtn = this.container.querySelector("#undo-btn");
     const crapetteBtn = this.container.querySelector("#crapette-btn");
-
-    const isAiVsAi = this.gameMode === "ai_vs_ai";
-    const isHumanTurn = !isAiVsAi && state.activePlayer === 0;
 
     if (drawBtn) {
       drawBtn.disabled = !isHumanTurn || Boolean(state.drawnCard);
@@ -787,7 +978,7 @@ export class HUD {
       undoBtn.disabled = !isHumanTurn || !Boolean(state.undoable);
     }
 
-    // 6. Crapette button glowing state
+    // 8. CALL CRAPETTE! button pulsing alert
     if (crapetteBtn) {
       if (!isAiVsAi && state.crapetteEligible) {
         crapetteBtn.classList.add("eligible");
@@ -797,7 +988,7 @@ export class HUD {
       crapetteBtn.disabled = isAiVsAi;
     }
 
-    // 7. Turn status banner
+    // 9. Turn status banner
     const banner = this.container.querySelector("#status-banner");
     if (banner) {
       if (state.winner !== null) {
