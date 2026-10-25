@@ -5,3 +5,8 @@ style = "src/style.css"
 kit_styles = []
 output = "crapette.html"
 guideline_bytes = 5242880
+
+[[assets]]
+placeholder = "/*ART*/"
+path = "art/cards"
+kind = "images"

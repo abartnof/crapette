@@ -1,0 +1,9 @@
+{
+  "name": "crapette",
+  "private": true,
+  "type": "module",
+  "description": "Crapette (Russian Bank) card game engine and 3D web table",
+  "scripts": {
+    "test": "bin/gate"
+  }
+}
