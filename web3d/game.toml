@@ -1,0 +1,7 @@
+name = "crapette"
+entry = "src/main.js"
+template = "src/index.html"
+style = "src/style.css"
+kit_styles = []
+output = "crapette.html"
+guideline_bytes = 5242880

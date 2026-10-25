@@ -96,20 +96,20 @@ crapette/
   - Synthesize 13-step ascending pentatonic chimes for foundation building.
   - Synthesize dramatic "CRAPETTE!" impact buzzer and victory fanfare.
 
-- [ ] **Phase 4: 3D Table & Visuals (`src/web3d/`)**
+- [x] **Phase 4: 3D Table & Visuals (`src/web3d/`)**
   - 3D table geometry, felt textures, camera framing.
   - Dual-deck card meshes (Royal Crimson vs. Midnight Navy backs).
   - High-DPI canvas-drawn card faces (Classic and Jumbo Index options).
   - Layout coordinates for 8 tableau columns, 8 foundations, 2 reserves, 2 stocks, 2 waste piles.
   - Smooth animation director: parabolic card hops, flip animations, target slot glowing.
 
-- [ ] **Phase 5: User Interaction & HUD**
+- [x] **Phase 5: User Interaction & HUD**
   - Click-to-move and drag-and-drop input handling.
   - Target slot highlighting and visual cues.
   - HUD: Turn indicator, card count meters, prominent "CALL CRAPETTE!" button.
   - Modals: New Game (seed selection, difficulty, mode), Settings (faces, animations, sound), Rules & Help.
 
-- [ ] **Phase 6: Integration, Build & Polish**
+- [x] **Phase 6: Integration, Build & Polish**
   - Build pipeline via `build.py` generating standalone `crapette.html`.
   - Verify zero console errors, smooth 60fps animations.
   - Full verification with `bin/gate`.
