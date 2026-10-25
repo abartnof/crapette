@@ -33,11 +33,11 @@ import {
   WebGLRenderer,
 } from "three";
 
-import { cardGeometry } from "../../kit/js/cards.js";
+import { cardGeometry } from "./cards.js";
 import { CARD, LIFT, RISE, layout, slotPositions, hitSlot } from "./layout.js";
-import { cardMaterials, cardTexture, inkMaterial, INK, RAMPS } from "../../kit/js/materials.js";
+import { cardMaterials, cardTexture, inkMaterial, INK, RAMPS } from "./materials.js";
 import { jumboTextures } from "../../kit/js/faces.js";
-import { minimumJerk } from "../../kit/js/easing.js";
+import { minimumJerk } from "./easing.js";
 
 export const SUITS = ["S", "H", "D", "C"];
 export const RANKS = "A23456789TJQK";
