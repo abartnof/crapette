@@ -1,0 +1,6 @@
+node_modules/
+kit/node_modules
+web3d/node_modules/
+reference_repos/
+.DS_Store
+*.log

@@ -1,0 +1,26 @@
+Provenance of what is in this repository (imported 2026-10-18, nothing pushed anywhere).
+
+crates/cardkit-rng/src/lib.rs
+  bezique crates/bezique-core/src/rng.rs @ 1b2179e, minus the game's `purpose` module.
+  The generator code is byte-identical in bezique, cassino and strohmandeln (checked by md5
+  of everything from `pub struct Rng` on). tools/prng-reference/ is bezique's, unchanged.
+
+js/, css/, test/ (except test_build.py), package.json
+  strohmandeln kit/ (itself cassino web3d/src @ 73f0cd7, made game-independent), plus:
+  - js/deck.js: bezique's (one material per mesh; a superset, needed for twin cards)
+  - js/director.js: bezique's pick-by-id fix
+  - js/scene.js: bezique's table z-offset fix (ink line flickered against the table)
+  Cassino's values remain this kit's defaults (camera eyes, zones, units). The existing games
+  are not being switched over to this repo; it is for new games.
+
+build.py, test/test_build.py
+  strohmandeln kit/build.py. Changed: the path remap names the config's `name`, not
+  "/strohmandeln". test_build.py finds esbuild at the repo root when it is not in a game.
+
+Not here, on purpose: piquet's Mersenne Twister RNG (its Python oracle needs it), any Card/Deck
+type (the four games encode cards four ways), game AI.
+
+template/, bin/new-game
+  Written here (2026-10-18) from what the four games share: crate layout, wasm ABI (the kit's
+  loadWasm), gate, CLAUDE.md conventions, PROTOCOL.md shape. Verified by generating a game and
+  running its gate and its browser test.

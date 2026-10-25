@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# The pre-commit gate: runs unit tests in Node and Python, and checks page build.
+# Run bare: bin/gate || exit 1
+set -u
+cd "$(dirname "$0")/.."
+parts=()
+
+fail() {
+  echo "gate: FAILED: $1" >&2
+  exit 1
+}
+
+# 1. Node tests (kit tests + game engine tests)
+[ -d web3d/node_modules/three ] || fail "web3d/node_modules missing: run npm install in web3d/"
+[ -e kit/node_modules/three ] || ln -s ../web3d/node_modules kit/node_modules
+
+if [ -d test ] && [ "$(ls -A test/*.test.js 2>/dev/null)" ]; then
+  TEST_FILES="kit/test/*.test.js test/*.test.js"
+else
+  TEST_FILES="kit/test/*.test.js"
+fi
+
+if ! node_out=$(node --test $TEST_FILES 2>&1); then
+  echo "$node_out" | grep -E "^not ok|^\s+not ok|Error|expected|actual" | head -40 >&2
+  fail "node tests"
+fi
+
+node_passed=$(echo "$node_out" | grep -E "(^|ℹ\s+)pass [0-9]+" | awk '{s += $NF} END {print s}')
+parts+=("$node_passed in Node")
+
+# 2. Python build tests
+PYTHON="/usr/bin/python3"
+if ! py_out=$($PYTHON -m unittest discover -s kit/test -p 'test_*.py' 2>&1); then
+  echo "$py_out" | tail -30 >&2
+  fail "python tests (kit/build.py)"
+fi
+py_passed=$(echo "$py_out" | grep -oE "^Ran [0-9]+" | awk '{print $2}')
+parts+=("$py_passed in Python")
+
+# 3. Check page is current (if game.toml exists)
+if [ -f web3d/game.toml ]; then
+  if ! build_out=$($PYTHON kit/build.py --check 2>&1); then
+    echo "$build_out" | tail -20 >&2
+    fail "kit/build.py --check (committed page is stale: run python3 kit/build.py)"
+  fi
+  parts+=("page current")
+fi
+
+( IFS=,; echo "gate: ok (${parts[*]/#/ })" )
