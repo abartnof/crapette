@@ -1,8 +1,17 @@
 // Application orchestrator for Crapette (Russian Bank) 3D
 
 import { CrapetteGame } from "../../src/engine/game.js";
-import { CrapetteAI } from "../../src/engine/ai.js";
+import { CrapetteAI, AI_SKILLS } from "../../src/engine/ai.js";
+import { generateHint } from "../../src/engine/hints.js";
 import { calculateDealScore, MatchLedger } from "../../src/engine/scoring.js";
+import {
+  pageDue,
+  getTutorialPage,
+  getTutorialSettings,
+  saveTutorialSettings,
+  markPageSeen,
+  resetTutorialSettings,
+} from "./tutorial.js";
 import { SoundSynthesizer } from "./audio.js";
 import { Table3D } from "./table3d.js";
 import { HUD } from "./hud.js";
@@ -15,21 +24,33 @@ export class GameController {
     table,
     interaction,
     seed = 12345n,
-    skill = "master",
+    skill = "4.0",
     mode = "competitive",
     gameMode = "human_vs_ai",
     stepDelayMs = 500,
+    tutorial = true,
+    hints = true,
+    store = typeof window !== "undefined" ? window.localStorage : null,
   } = {}) {
     this.seed = BigInt(seed);
     this.skill = skill;
     this.mode = mode;
     this.gameMode = gameMode;
     this.stepDelayMs = stepDelayMs;
+    this.tutorialEnabled = tutorial;
+    this.hintsEnabled = hints;
+    this.store = store;
 
     this.sound = sound;
     this.hud = hud;
     this.table = table;
     this.interaction = interaction;
+
+    const tutSettings = getTutorialSettings(this.store);
+    this.tutorialSeen = Array.isArray(tutSettings?.seen) ? [...tutSettings.seen] : [];
+    if (tutSettings && tutSettings.enabled !== undefined && tutorial === undefined) {
+      this.tutorialEnabled = tutSettings.enabled;
+    }
 
     this.ledger = new MatchLedger();
     this.game = null;
@@ -59,7 +80,7 @@ export class GameController {
   }
 
   initGame(dealSeed = null) {
-    if (dealSeed !== null) {
+    if (dealSeed !== null && dealSeed !== undefined) {
       this.seed = BigInt(dealSeed);
     } else if (this.seed === undefined) {
       this.seed = BigInt(Math.floor(Math.random() * 1000000) + 1);
@@ -69,7 +90,80 @@ export class GameController {
     this.ai = new CrapetteAI({ skill: this.skill, seed: this.seed });
 
     this._syncAll();
+    this.checkTutorial();
     this._checkTurn();
+  }
+
+  startNewGame({ mode, rules, skill, tutorial, hints, seed } = {}) {
+    if (mode !== undefined) this.gameMode = mode;
+    if (rules !== undefined) this.mode = rules;
+    if (skill !== undefined) this.skill = skill;
+    if (tutorial !== undefined) this.tutorialEnabled = Boolean(tutorial);
+    if (hints !== undefined) this.hintsEnabled = Boolean(hints);
+
+    if (this.hud) {
+      if (typeof this.hud.setMode === "function") this.hud.setMode(this.gameMode);
+      if (typeof this.hud.setSkill === "function") this.hud.setSkill(this.skill);
+    }
+
+    const dealSeed = seed ? BigInt(seed) : BigInt(Math.floor(Math.random() * 1000000) + 1);
+    this.initGame(dealSeed);
+  }
+
+  changeFelt(felt) {
+    if (this.table && typeof this.table.setFelt === "function") {
+      this.table.setFelt(felt);
+    }
+  }
+
+  requestHint() {
+    if (this.game.winner != null) return;
+    const hint = generateHint(this.game);
+    if (!hint) {
+      if (this.hud && typeof this.hud.showToast === "function") {
+        this.hud.showToast("No hints available for this position.");
+      }
+      return;
+    }
+    if (this.hud && typeof this.hud.showHintModal === "function") {
+      this.hud.showHintModal(hint);
+    }
+    if (this.table && typeof this.table.highlightSlots === "function") {
+      const targets = [hint.source, hint.destination].filter(Boolean);
+      this.table.highlightSlots(targets);
+    }
+  }
+
+  checkTutorial() {
+    if (!this.tutorialEnabled || this.gameMode === "ai_vs_ai" || this.game?.winner != null) return;
+    const state = this.game.state();
+    const dueKey = pageDue(state, this.tutorialSeen, { enabled: this.tutorialEnabled, isWatching: this.gameMode === "ai_vs_ai" });
+    if (dueKey) {
+      const page = getTutorialPage(dueKey);
+      if (page && this.hud && typeof this.hud.showTutorialModal === "function") {
+        this.hud.showTutorialModal(page);
+      }
+    }
+  }
+
+  handleTutorialDismiss({ pageKey, disableAll } = {}) {
+    if (pageKey) {
+      if (!this.tutorialSeen.includes(pageKey)) {
+        this.tutorialSeen.push(pageKey);
+      }
+      markPageSeen(this.store, pageKey);
+    }
+    if (disableAll) {
+      this.tutorialEnabled = false;
+      saveTutorialSettings(this.store, { enabled: false, seen: this.tutorialSeen });
+    }
+  }
+
+  resetTutorials() {
+    this.tutorialSeen = [];
+    this.tutorialEnabled = true;
+    resetTutorialSettings(this.store);
+    this.checkTutorial();
   }
 
   _syncAll() {
@@ -87,6 +181,8 @@ export class GameController {
       this._handleDealVictory();
       return;
     }
+
+    this.checkTutorial();
 
     if (this.gameMode === "ai_vs_ai") {
       if (!this.isAiRunning && this.stepDelayMs >= 0) {
@@ -166,7 +262,6 @@ export class GameController {
     if (!this.sound) return;
 
     if (dst === "h" || dst.startsWith("h")) {
-      // Find foundation card rank for chime
       let rank = 1;
       let fIndex = dst === "h" ? 0 : parseInt(dst.slice(1), 10);
       const fPile = this.game.foundations[fIndex];
@@ -239,7 +334,6 @@ export class GameController {
       if (this.gameMode !== "ai_vs_ai" && this.game.crapetteBlunder && this.skill === "novice" && this.stepDelayMs > 0) {
         await new Promise((resolve) => setTimeout(resolve, Math.max(600, this.stepDelayMs)));
         if (this.game.activePlayer !== 1) {
-          // Human claimed crapette during the pause!
           this.isAiRunning = false;
           return;
         }
@@ -274,7 +368,6 @@ export class GameController {
 
       if (this.game.winner === null) {
         if (this.gameMode === "ai_vs_ai" || this.game.activePlayer === 1) {
-          // Continue AI turns
           this._scheduleAiTurn();
         }
       } else {
@@ -307,18 +400,28 @@ export function init() {
     onWaste: () => controller?.handleWaste(),
     onCrapette: () => controller?.handleCrapette(),
     onUndo: () => controller?.handleUndo(),
-    onNewGame: () => controller?.initGame(),
+    onNewGame: () => controller?.hud.toggleNewGameModal(true),
+    onStartNewGame: (cfg) => controller?.startNewGame(cfg),
+    onHint: () => controller?.requestHint(),
+    onOpenSettings: () => controller?.hud.toggleSettingsModal(true),
+    onChangeFelt: (felt) => controller?.changeFelt(felt),
+    onResetTutorial: () => controller?.resetTutorials(),
+    onDismissTutorial: (data) => controller?.handleTutorialDismiss(data),
     onToggleSound: () => {
       const muted = !sound.isMuted();
       sound.setMuted(muted);
       hud.setMuted(muted);
     },
+    onVolumeChange: (vol) => {
+      if (typeof sound.setMasterVolume === "function") sound.setMasterVolume(vol);
+    },
     onToggleSkill: () => {
-      const newSkill = controller.skill === "master" ? "novice" : "master";
-      controller.skill = newSkill;
-      controller.ai.skill = newSkill;
-      hud.setSkill(newSkill);
-      hud.showToast(`AI skill set to ${newSkill === "master" ? "Master" : "Novice"}`);
+      const cur = parseFloat(controller.skill) || 4.0;
+      const next = cur <= 1.0 ? 4.0 : cur - 0.5;
+      controller.skill = next.toFixed(1);
+      controller.ai.skill = next.toFixed(1);
+      hud.setSkill(next.toFixed(1));
+      hud.showToast(`AI skill level: ${next.toFixed(1)}`);
     },
     onToggleMode: () => {
       controller?.toggleGameMode();

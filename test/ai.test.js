@@ -214,6 +214,19 @@ test("AI: supports novice skill setting with occasional oversights", () => {
   assert.equal(master.skill, "master");
 });
 
+test("AI: supports numeric skill slider from 1.0 to 4.0", () => {
+  const r1 = new CrapetteAI({ skill: 1.0 });
+  const r2 = new CrapetteAI({ skill: 2.5 });
+  const r4 = new CrapetteAI({ skill: 4.0 });
+
+  assert.equal(r1.skillLevel, 1.0);
+  assert.equal(r2.skillLevel, 2.5);
+  assert.equal(r4.skillLevel, 4.0);
+  assert.ok(r1.blunderRate > r2.blunderRate);
+  assert.ok(r2.blunderRate > r4.blunderRate);
+  assert.equal(r4.blunderRate, 0.0);
+});
+
 test("AI: prevents infinite loop tableau oscillations", () => {
   const game = new CrapetteGame({ seed: 1n });
   const ai = new CrapetteAI({ seed: 1n });

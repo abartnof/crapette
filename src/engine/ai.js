@@ -1,11 +1,39 @@
 // Heuristic AI opponent for Crapette (Russian Bank)
 import { Rng } from "./rng.js";
 
+export const AI_SKILLS = Object.freeze([
+  { value: 1.0, words: "plays simply, misses blunders" },
+  { value: 1.5, words: "casual play with occasional oversights" },
+  { value: 2.0, words: "builds tableau, occasionally misses Crapette" },
+  { value: 2.5, words: "steady fundamentals and basic loading" },
+  { value: 3.0, words: "strict compulsory play and sharp challenge" },
+  { value: 3.5, words: "aggressive reserve focus and defense" },
+  { value: 4.0, words: "ruthless blunder seizure and deep foresight" },
+]);
+
 export class CrapetteAI {
-  constructor({ skill = "master", seed = 12345n, blunderRate = 0.0 } = {}) {
-    this.skill = skill; // "master" or "novice"
+  constructor({ skill = "master", seed = 12345n, blunderRate = null } = {}) {
+    this.skill = skill; // string ("novice"|"master") or numeric 1.0..4.0
     this.rng = Rng.stream(BigInt(seed), 2);
-    this.blunderRate = skill === "novice" ? (blunderRate || 0.2) : 0.0;
+
+    if (typeof skill === "number") {
+      this.skillLevel = Math.max(1.0, Math.min(4.0, skill));
+    } else if (skill === "novice") {
+      this.skillLevel = 1.5;
+    } else {
+      this.skillLevel = 4.0;
+    }
+
+    if (blunderRate !== null && blunderRate !== undefined) {
+      this.blunderRate = blunderRate;
+    } else {
+      // 1.0 has 0.36 blunder rate; 4.0 has 0.0 blunder rate
+      this.blunderRate = (4.0 - this.skillLevel) * 0.12;
+    }
+
+    // 1.0 notices Crapette 60% of the time; 4.0 notices 100% of the time
+    this.crapetteNoticeRate = Math.min(100, Math.round(60 + (this.skillLevel - 1.0) * 13.34));
+
     this.turnMoves = [];
     this.recentBoardMoves = [];
     this.lastPlayer = null;
@@ -21,11 +49,10 @@ export class CrapetteAI {
 
     // 1. Blunder exploitation: If opponent committed a blunder and Crapette is eligible
     if (state.crapetteEligible) {
-      if (this.skill === "master") {
+      if (this.skillLevel >= 4.0) {
         return "crapette";
       }
-      // Novice may occasionally miss the call
-      if (this.rng.nextInt(0, 100) < 80) {
+      if (this.rng.nextInt(0, 100) < this.crapetteNoticeRate) {
         return "crapette";
       }
     }

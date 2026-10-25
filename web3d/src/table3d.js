@@ -100,14 +100,33 @@ export class Table3D {
   _createTableSurface() {
     const tableGeom = new PlaneGeometry(TABLE.width, TABLE.depth);
     const tableMat = new MeshStandardMaterial({
-      color: "#1c5233",
+      color: "#18221c",
       roughness: 0.85,
       metalness: 0.1,
     });
-    const tableMesh = new Mesh(tableGeom, tableMat);
-    tableMesh.rotation.x = -Math.PI / 2;
-    tableMesh.position.y = -0.05;
-    this.scene.add(tableMesh);
+    this.tableMesh = new Mesh(tableGeom, tableMat);
+    this.tableMesh.rotation.x = -Math.PI / 2;
+    this.tableMesh.position.y = -0.05;
+    this.scene.add(this.tableMesh);
+  }
+
+  setFelt(felt) {
+    this.felt = felt;
+    if (this.headless || !this.scene) return;
+    const feltColors = {
+      slate: { felt: "#18221c", bg: "#0e1511" },
+      casino: { felt: "#1c5233", bg: "#164529" },
+      navy: { felt: "#16253b", bg: "#0d1726" },
+      charcoal: { felt: "#24282c", bg: "#171a1d" },
+    };
+    const c = feltColors[felt] || feltColors.slate;
+    if (this.tableMesh && this.tableMesh.material) {
+      this.tableMesh.material.color.set(c.felt);
+    }
+    this.scene.background = new Color(c.bg);
+    if (this.scene.fog) {
+      this.scene.fog.color.set(c.bg);
+    }
   }
 
   _getSlotCoordinates(slotKey) {

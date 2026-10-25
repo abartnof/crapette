@@ -1,30 +1,74 @@
 /* Crapette (Russian Bank) — 3D & HUD Stylesheet */
 
 :root {
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+  /* Material Design 3 Color Tokens (Matching Cassino & Piquet @ #2f5da8 seed) */
+  --md-sys-color-primary: #435e91;
+  --md-sys-color-on-primary: #ffffff;
+  --md-sys-color-primary-container: #d7e2ff;
+  --md-sys-color-on-primary-container: #2a4678;
+  --md-sys-color-secondary: #565e71;
+  --md-sys-color-on-secondary: #ffffff;
+  --md-sys-color-secondary-container: #dae2f9;
+  --md-sys-color-on-secondary-container: #3f4759;
+  --md-sys-color-error: #ba1a1a;
+  --md-sys-color-on-error: #ffffff;
+  --md-sys-color-error-container: #ffdad6;
+  --md-sys-color-on-error-container: #93000a;
   
-  --bg-table: #19442a;
-  --bg-felt: #1b5334;
-  --hud-bg: rgba(18, 22, 28, 0.88);
-  --hud-border: rgba(255, 255, 255, 0.12);
-  --hud-text: #f0f3f8;
+  /* Neutral surfaces and backgrounds */
+  --md-sys-color-surface: #121316;
+  --md-sys-color-on-surface: #e2e2e9;
+  --md-sys-color-surface-variant: #44474f;
+  --md-sys-color-on-surface-variant: #c4c6d0;
+  --md-sys-color-surface-container-lowest: #0c0d10;
+  --md-sys-color-surface-container-low: #17181c;
+  --md-sys-color-surface-container: #1b1c22;
+  --md-sys-color-surface-container-high: #25262c;
+  --md-sys-color-surface-container-highest: #303138;
+  --md-sys-color-outline: #74777f;
+  --md-sys-color-outline-variant: #3a3c42;
+
+  /* Semantically significant player and game state colors */
+  --cassino-you: #b3261e; /* Crimson Red / Player 0 */
+  --cassino-on-you: #ffffff;
+  --cassino-you-container: #ffd8d6;
+  --cassino-on-you-container: #410002;
+
+  --cassino-them: #2a5286; /* Navy Blue / Player 1 */
+  --cassino-on-them: #ffffff;
+  --cassino-them-container: #d7e2ff;
+  --cassino-on-them-container: #001b3f;
+
+  --color-hint: #e5a019;
+  --color-hint-container: rgba(229, 160, 25, 0.15);
+  --color-foundation: #2e7d32;
+
+  /* Table Felt and Canvas Background: Restrained, elegant dark slate forest felt */
+  --bg-table: #141716;
+  --bg-felt: #1a241e;
+  --table-border: #0e1110;
+
+  /* HUD Overlays & Buttons */
+  --hud-bg: rgba(23, 24, 28, 0.90);
+  --hud-border: rgba(255, 255, 255, 0.08);
+  --hud-text: #e2e2e9;
   --hud-text-dim: #9aa2b1;
 
-  --crimson-red: #c8202c;
-  --crimson-glow: rgba(200, 32, 44, 0.45);
-  --midnight-navy: #1d3557;
-  --gold-accent: #f5a623;
-  --gold-glow: rgba(245, 166, 35, 0.5);
+  --btn-bg: #25262c;
+  --btn-border: #3a3c42;
+  --btn-text: #e2e2e9;
+  --btn-hover: #32343c;
+  --btn-active: #1c1d22;
 
-  --btn-bg: #28303e;
-  --btn-border: #3b465a;
-  --btn-text: #ffffff;
-  --btn-hover: #354054;
-  --btn-active: #202733;
+  --crapette-pulse-1: #ba1a1a;
+  --crapette-pulse-2: #e5a019;
 
-  --crapette-pulse-1: #e63946;
-  --crapette-pulse-2: #ffbe0b;
+  --elevation-1: 0 1px 3px rgba(0, 0, 0, 0.24), 0 1px 2px rgba(0, 0, 0, 0.16);
+  --elevation-2: 0 3px 6px rgba(0, 0, 0, 0.28), 0 2px 4px rgba(0, 0, 0, 0.18);
+  --elevation-3: 0 10px 20px rgba(0, 0, 0, 0.32), 0 3px 6px rgba(0, 0, 0, 0.22);
 }
 
 * {
@@ -50,7 +94,7 @@ html, body {
   width: 100vw;
   height: 100vh;
   overflow: hidden;
-  background: radial-gradient(circle at center, #23633e 0%, #153b24 70%, #0d2617 100%);
+  background: radial-gradient(circle at center, #1e2822 0%, #151c18 70%, #0c100e 100%);
 }
 
 #stage {
@@ -129,7 +173,7 @@ html, body {
 .hud-deal-label {
   font-size: 0.85rem;
   font-weight: 600;
-  color: var(--gold-accent);
+  color: var(--color-hint);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -153,11 +197,11 @@ html, body {
 }
 
 .hud-score-group.you .player-name {
-  color: #ff7b89;
+  color: #ff897d;
 }
 
 .hud-score-group.opp .player-name {
-  color: #8da9c4;
+  color: #acc7ff;
 }
 
 .hud-score-group .player-score {
@@ -649,4 +693,432 @@ html, body {
     padding: 10px 14px;
     font-size: 0.85rem;
   }
+}
+
+/* ==========================================================================
+   8. HINTS, TUTORIAL & SKILL SLIDER SURFACES (Cassino M3 Style)
+   ========================================================================== */
+
+/* Hint Tool Button */
+.hud-tool-btn.hint {
+  background: var(--color-hint-container);
+  border-color: rgba(229, 160, 25, 0.4);
+  color: #ffdf9e;
+}
+
+.hud-tool-btn.hint:hover {
+  background: rgba(229, 160, 25, 0.28);
+  border-color: rgba(229, 160, 25, 0.7);
+}
+
+/* AI Skill Slider in Toolbar */
+.hud-skill-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+}
+
+.hud-skill-label {
+  color: var(--hud-text-dim);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.hud-skill-value {
+  color: var(--hud-text);
+  font-weight: 700;
+  min-width: 60px;
+}
+
+.hud-skill-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 75px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--md-sys-color-surface-variant);
+  outline: none;
+  cursor: pointer;
+}
+
+.hud-skill-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--md-sys-color-primary);
+  border: 2px solid #ffffff;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.hud-skill-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--md-sys-color-primary);
+  border: 2px solid #ffffff;
+  cursor: pointer;
+}
+
+/* Hint Card Modal */
+.hud-hint-modal-card {
+  background: var(--md-sys-color-surface-container);
+  border: 1px solid rgba(229, 160, 25, 0.35);
+  border-radius: 14px;
+  padding: 22px 26px;
+  max-width: 480px;
+  width: 90%;
+  box-shadow: var(--elevation-3), 0 0 24px rgba(229, 160, 25, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: modalPop 0.2s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.hint-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.hint-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #ffdf9e;
+  background: var(--color-hint-container);
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(229, 160, 25, 0.3);
+}
+
+.hint-headline {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1.35;
+}
+
+.hint-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hint-section-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--hud-text-dim);
+}
+
+.hint-rule-box {
+  background: var(--md-sys-color-surface-container-high);
+  border-left: 3px solid var(--md-sys-color-primary);
+  padding: 10px 14px;
+  border-radius: 0 8px 8px 0;
+  font-size: 0.88rem;
+  color: var(--md-sys-color-on-surface);
+  line-height: 1.4;
+}
+
+.hint-tension-box {
+  background: var(--md-sys-color-surface-container-high);
+  border-left: 3px solid var(--color-hint);
+  padding: 10px 14px;
+  border-radius: 0 8px 8px 0;
+  font-size: 0.88rem;
+  color: #ffe0a3;
+  line-height: 1.4;
+}
+
+.hint-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+/* Tutorial Dialog */
+.hud-tutorial-card {
+  background: var(--md-sys-color-surface-container);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 16px;
+  padding: 24px 28px;
+  max-width: 520px;
+  width: 90%;
+  box-shadow: var(--elevation-3);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: modalPop 0.25s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.tutorial-step-tag {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--md-sys-color-primary);
+}
+
+.tutorial-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.tutorial-summary {
+  font-size: 0.95rem;
+  color: var(--md-sys-color-on-surface);
+  line-height: 1.5;
+}
+
+.tutorial-bullets {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-left: 4px;
+}
+
+.tutorial-bullet-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.88rem;
+  color: var(--md-sys-color-on-surface-variant);
+  line-height: 1.4;
+}
+
+.tutorial-bullet-item::before {
+  content: "•";
+  color: var(--md-sys-color-primary);
+  font-weight: bold;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.tutorial-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 10px;
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.tutorial-toggle-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--hud-text-dim);
+  cursor: pointer;
+}
+
+.tutorial-toggle-wrap input[type="checkbox"] {
+  accent-color: var(--md-sys-color-primary);
+}
+
+/* ==========================================================================
+   CASSINO CARD BADGES (.badges & .badge)
+   ========================================================================== */
+.badges {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.badge {
+  position: absolute;
+  box-sizing: border-box;
+  min-width: 2.2em;
+  height: 2.2em;
+  padding: 0 0.45em;
+  display: grid;
+  place-items: center;
+  border: max(2px, 0.15em) solid #fff;
+  border-radius: 999px;
+  background: #1b1f24;
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  box-shadow:
+    0 0 0 max(1px, 0.09em) #1b1f24,
+    0 3px 8px rgba(0, 0, 0, 0.45);
+  pointer-events: auto;
+  cursor: default;
+  user-select: none;
+  transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.badge:hover {
+  transform: scale(1.1);
+}
+
+/* Card Badge Positioning */
+#badge-opp-reserve {
+  top: 14%;
+  left: 14%;
+}
+#badge-opp-stock {
+  top: 14%;
+  right: 14%;
+}
+#badge-opp-waste {
+  top: 14%;
+  right: 25%;
+}
+
+#badge-you-reserve {
+  bottom: 18%;
+  right: 14%;
+}
+#badge-you-stock {
+  bottom: 18%;
+  left: 14%;
+}
+#badge-you-waste {
+  bottom: 18%;
+  left: 25%;
+}
+
+/* Modal Form Controls (MD3 Neutral surfaces) */
+.settings-card {
+  max-width: 540px;
+  width: 92%;
+}
+
+.modal-sub {
+  font-size: 0.9rem;
+  color: var(--md-sys-color-on-surface-variant);
+  margin-top: -6px;
+  margin-bottom: 14px;
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.setting-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.setting-label {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--md-sys-color-on-surface);
+}
+
+.setting-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.88rem;
+  color: var(--md-sys-color-on-surface);
+  margin-bottom: 10px;
+  cursor: pointer;
+}
+
+.setting-checkbox-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--md-sys-color-primary);
+  cursor: pointer;
+}
+
+.hud-select,
+.hud-input {
+  background: var(--md-sys-color-surface-container-highest);
+  color: var(--md-sys-color-on-surface);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.88rem;
+  font-family: inherit;
+  outline: none;
+}
+
+.hud-select:focus,
+.hud-input:focus {
+  border-color: var(--md-sys-color-primary);
+  box-shadow: 0 0 0 2px rgba(67, 94, 145, 0.25);
+}
+
+.hud-slider {
+  width: 100%;
+  accent-color: var(--md-sys-color-primary);
+}
+
+.skill-description {
+  font-size: 0.82rem;
+  color: var(--md-sys-color-primary);
+  font-weight: 600;
+  padding: 4px 8px;
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  border-radius: 6px;
+}
+
+.hud-modal-btn {
+  margin-top: 14px;
+  width: 100%;
+  padding: 12px 18px;
+  font-size: 1rem;
+  font-weight: 700;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.hud-modal-btn.primary {
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+}
+
+.hud-modal-btn.primary:hover {
+  background: #344c77;
+}
+
+.hud-btn.tonal {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+  border: none;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.hud-btn.outline {
+  background: transparent;
+  color: var(--md-sys-color-on-surface);
+  border: 1px solid var(--md-sys-color-outline);
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
 }

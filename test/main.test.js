@@ -20,6 +20,11 @@ class MockHUD {
   constructor() {
     this.rendered = [];
     this.toasts = [];
+    this.hints = [];
+    this.tutorials = [];
+    this.mode = null;
+    this.skill = null;
+    this.muted = false;
   }
   render(state, ledger) {
     this.rendered.push({ state, ledger });
@@ -27,19 +32,37 @@ class MockHUD {
   showToast(msg) {
     this.toasts.push(msg);
   }
-  setMuted() {}
-  setSkill() {}
+  showHintModal(hint) {
+    this.hints.push(hint);
+  }
+  hideHintModal() {}
+  showTutorialModal(page) {
+    this.tutorials.push(page);
+  }
+  hideTutorialModal() {}
+  setMuted(m) { this.muted = m; }
+  setSkill(s) { this.skill = s; }
+  setMode(m) { this.mode = m; }
 }
 
 class MockTable {
   constructor() {
     this.synced = [];
+    this.highlights = [];
+    this.felt = null;
   }
   sync(state) {
     this.synced.push(state);
   }
-  highlightSlots() {}
-  clearHighlights() {}
+  highlightSlots(slots) {
+    this.highlights = [...slots];
+  }
+  clearHighlights() {
+    this.highlights = [];
+  }
+  setFelt(felt) {
+    this.felt = felt;
+  }
 }
 
 test("GameController initializes components and syncs initial state", () => {
@@ -214,4 +237,93 @@ test("GameController runs a match in AI vs AI mode to completion", async () => {
 
   assert.notEqual(controller.game.winner, null, "Game finished with a winner");
   assert.ok(controller.ledger.dealCount >= 1, "Deal score was recorded in ledger");
+});
+
+test("GameController requestHint generates ZPD hint, shows modal, and highlights slots", () => {
+  const sound = new MockSound();
+  const hud = new MockHUD();
+  const table = new MockTable();
+
+  const controller = new GameController({
+    sound,
+    hud,
+    table,
+    seed: 12345n,
+    stepDelayMs: 0,
+  });
+
+  controller.requestHint();
+
+  assert.equal(hud.hints.length, 1, "Hint modal was shown");
+  const hint = hud.hints[0];
+  assert.ok(hint.headline || hint.what, "Hint has headline or action");
+  assert.ok(hint.rule, "Hint has pedagogical rule reminder");
+  assert.ok(hint.tension, "Hint has strategic tension");
+  assert.ok(table.highlights.length > 0, "Target slots were highlighted");
+});
+
+test("GameController triggers progressive tutorial popups when feature appears", () => {
+  const sound = new MockSound();
+  const hud = new MockHUD();
+  const table = new MockTable();
+
+  const controller = new GameController({
+    sound,
+    hud,
+    table,
+    seed: 12345n,
+    stepDelayMs: 0,
+    tutorial: true,
+  });
+
+  // Deal start triggers the intro tutorial page
+  assert.ok(hud.tutorials.length >= 1, "Tutorial page was popped up for new player");
+  assert.equal(hud.tutorials[0].key, "intro");
+});
+
+test("GameController startNewGame configures game parameters and resets state", () => {
+  const sound = new MockSound();
+  const hud = new MockHUD();
+  const table = new MockTable();
+
+  const controller = new GameController({
+    sound,
+    hud,
+    table,
+    seed: 12345n,
+    stepDelayMs: 0,
+  });
+
+  controller.startNewGame({
+    mode: "ai_vs_ai",
+    rules: "casual",
+    skill: 2.5,
+    tutorial: false,
+    hints: true,
+    seed: "99999",
+  });
+
+  assert.equal(controller.gameMode, "ai_vs_ai");
+  assert.equal(controller.mode, "casual");
+  assert.equal(controller.skill, 2.5);
+  assert.equal(controller.tutorialEnabled, false);
+  assert.equal(controller.hintsEnabled, true);
+  assert.equal(controller.seed, 99999n);
+});
+
+test("GameController changeFelt updates table felt design", () => {
+  const sound = new MockSound();
+  const hud = new MockHUD();
+  const table = new MockTable();
+
+  const controller = new GameController({
+    sound,
+    hud,
+    table,
+    seed: 12345n,
+    stepDelayMs: 0,
+  });
+
+  controller.changeFelt("slate");
+  assert.equal(table.felt, "slate");
 });
