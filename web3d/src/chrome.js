@@ -103,42 +103,48 @@ export function el(tag, attrs = {}, ...children) {
 export function createChrome(root, on = {}) {
   // ---- 1. Top Chrome Bar ----------------------------------------------------
   const fresh = el("md-icon-button", {
-    class: "new-game",
+    id: "new-deal-btn",
+    class: "new-game hud-tool-btn primary",
     title: "New game",
     "aria-label": "New game",
     onclick: () => on.newGame?.(),
   }, symbol("add"));
 
   const modeSwitch = el("md-icon-button", {
-    class: "mode-switch",
+    id: "mode-btn",
+    class: "mode-switch hud-tool-btn",
     title: "Switch game mode (Human vs AI / AI vs AI)",
     "aria-label": "Switch game mode",
     onclick: () => on.mode?.(),
   }, icon("mode"));
 
   const undo = el("md-icon-button", {
-    class: "undo",
+    id: "undo-btn",
+    class: "undo hud-tool-btn",
     title: "Undo last move",
     "aria-label": "Undo last move",
     onclick: () => on.undo?.(),
   }, icon("undo"));
 
   const redo = el("md-icon-button", {
-    class: "redo",
+    id: "redo-btn",
+    class: "redo hud-tool-btn",
     title: "Redo move",
     "aria-label": "Redo move",
     onclick: () => on.redo?.(),
   }, icon("redo"));
 
   const hint = el("md-icon-button", {
-    class: "hint",
+    id: "hint-btn",
+    class: "hint hud-tool-btn",
     title: "Get tactical hint",
     "aria-label": "Get tactical hint",
     onclick: () => on.hint?.(),
   }, icon("hint"));
 
   const log = el("md-icon-button", {
-    class: "log-toggle",
+    id: "log-btn",
+    class: "log-toggle hud-tool-btn",
     title: "Game narration and action log",
     "aria-label": "Game log",
     toggle: true,
@@ -146,14 +152,16 @@ export function createChrome(root, on = {}) {
   log.addEventListener("change", () => on.log?.(log.selected));
 
   const help = el("md-icon-button", {
-    class: "help",
+    id: "rules-btn",
+    class: "help hud-tool-btn",
     title: "How to play Crapette (Rules & Tutorial)",
     "aria-label": "How to play",
     onclick: () => on.help?.(),
   }, symbol("help"));
 
   const gear = el("md-icon-button", {
-    class: "settings-open",
+    id: "settings-btn",
+    class: "settings-open hud-tool-btn",
     title: "Settings",
     "aria-label": "Settings",
     onclick: () => settings.show(),

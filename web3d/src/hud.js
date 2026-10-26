@@ -1,6 +1,7 @@
 // HUD interface, Material Design 3 surfaces, and Cassino-style card badges for Crapette (Russian Bank)
 
 import { AI_SKILLS } from "../../src/engine/ai.js";
+import { createChrome } from "./chrome.js";
 import {
   createOverlay,
   trackers,
@@ -336,6 +337,38 @@ export class HUD {
       settingsBtn
     );
     header.append(titleBox, ledgerBox, toolBar);
+
+    try {
+      this.chrome = createChrome(header, {
+        document: this.doc,
+        newGame: () => {
+          this.toggleNewGameModal(true);
+          if (this.onNewGame) this.onNewGame();
+        },
+        mode: () => {
+          if (this.onToggleMode) this.onToggleMode();
+        },
+        undo: () => {
+          if (this.onUndo) this.onUndo();
+        },
+        hint: () => {
+          if (this.onHint) this.onHint();
+        },
+        help: () => {
+          this.toggleRulesModal(true);
+        },
+        surface: (felt) => {
+          this.currentFelt = felt;
+          if (this.onChangeFelt) this.onChangeFelt(felt);
+        },
+        sound: (enabled) => {
+          this.isMuted = !enabled;
+          if (this.onToggleSound) this.onToggleSound();
+        },
+      });
+    } catch (e) {
+      // In headless test environments without full DOM, chrome mounts gracefully
+    }
 
     // 2. Turn Status Banner
     const banner = this._el("div", { className: "hud-banner", id: "status-banner", text: "Your Turn — Make moves or Draw Stock" });
@@ -876,6 +909,15 @@ export class HUD {
     // 1. Floating Scorebug
     if (this.scorebug) {
       this.scorebug.render(state, ledger);
+    }
+
+    if (this.chrome && typeof this.chrome.sync === "function") {
+      this.chrome.sync(state, {
+        watching: isAiVsAi,
+        skill: this.currentSkill,
+        sound: !this.isMuted,
+        surface: this.currentFelt,
+      });
     }
 
     // 2. Trackers Panel in Overlay

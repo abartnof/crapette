@@ -6,7 +6,10 @@
 <meta charset="utf-8">
 <title>Crapette (Russian Bank)</title>
 <meta http-equiv="refresh" content="0; url=web3d/crapette.html">
-<script>location.replace("web3d/crapette.html" + location.search + location.hash);</script>
+<script>
+  const sep = location.search ? "&" : "?";
+  location.replace("web3d/crapette.html" + location.search + sep + "v=" + Date.now() + location.hash);
+</script>
 </head>
 <body>
 <p><a href="web3d/crapette.html">Play Crapette</a></p>
