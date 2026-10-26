@@ -153,6 +153,21 @@ export class InteractionController {
   handleCardClick(card) {
     if (!card) return;
     const sourceSlot = card.sourceSlot;
+    const state = typeof this.getGameState === "function" ? this.getGameState() : null;
+
+    // Direct draw action on stock click
+    if (sourceSlot === "s" || sourceSlot === "s0") {
+      this.clearSelection();
+      this.onDraw?.();
+      return;
+    }
+
+    // Direct waste action on waste pile click when a drawn card is held
+    if (state?.drawnCard && (sourceSlot === "w" || sourceSlot === "w0")) {
+      this.clearSelection();
+      this.onWaste?.();
+      return;
+    }
 
     // If currently selected source is clicked again, deselect
     if (this.selectedSource === sourceSlot) {
@@ -181,6 +196,22 @@ export class InteractionController {
   }
 
   handleSlotClick(slotKey) {
+    const state = typeof this.getGameState === "function" ? this.getGameState() : null;
+
+    // Direct draw action on empty stock slot click
+    if (slotKey === "s" || slotKey === "s0") {
+      this.clearSelection();
+      this.onDraw?.();
+      return;
+    }
+
+    // Direct waste action on waste slot click when a drawn card is held
+    if (state?.drawnCard && (slotKey === "w" || slotKey === "w0")) {
+      this.clearSelection();
+      this.onWaste?.();
+      return;
+    }
+
     if (!this.selectedSource) return;
     this._tryMoveToSlot(slotKey);
   }
@@ -241,6 +272,12 @@ export class InteractionController {
     const src = this.draggedSource;
     this.draggedSource = null;
     this.dragPointer = null;
+
+    if (src === "drawn" && (targetSlot === "w" || targetSlot === "w0")) {
+      this.clearSelection();
+      this.onWaste?.();
+      return;
+    }
 
     if (targetSlot) {
       let validDst = null;

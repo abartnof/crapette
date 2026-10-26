@@ -91,7 +91,9 @@ html, body {
   height: 100%;
   display: block;
 }
-#overlay {
+#overlay,
+#hud,
+.hud-root {
   position: fixed;
   inset: 0;
   pointer-events: none;
@@ -1600,7 +1602,8 @@ html.sideways .game-log {
   to { opacity: 1; transform: translate(-50%, 0); }
 }
 
-.hud-modal {
+.hud-modal,
+.hud-modal-backdrop {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.45);
@@ -1609,6 +1612,7 @@ html.sideways .game-log {
   z-index: 50;
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
+  pointer-events: auto;
 }
 .hud-modal-card {
   background: var(--md-sys-color-surface-container-high);

@@ -16,6 +16,7 @@ import {
   RepeatWrapping,
   Scene,
   Vector2,
+  VSMShadowMap,
   WebGLRenderer,
   CanvasTexture,
   SRGBColorSpace,
@@ -43,6 +44,15 @@ export class Table3D {
     this.cardGeom = cardGeometry();
     this.ramp = RAMPS.card();
     this.inkMaterials = new Set();
+    this.inks = {
+      plain: inkMaterial({ color: INK, width: 2.5 }),
+      hover: inkMaterial({ color: INK, width: 3.75 }),
+      hint: inkMaterial({ color: "#009fb7", width: 4.0 }),
+      chosen: inkMaterial({ color: "#e8900c", width: 4.0 }),
+    };
+    for (const ink of Object.values(this.inks)) {
+      this.registerInk(ink);
+    }
 
     this.scene = null;
     this.camera = null;
@@ -78,6 +88,7 @@ export class Table3D {
       this.renderer = new WebGLRenderer({ canvas: this.canvas, antialias: true });
       this.renderer.outputColorSpace = SRGBColorSpace;
       this.renderer.shadowMap.enabled = true;
+      this.renderer.shadowMap.type = VSMShadowMap;
       this.renderer.setSize(this.canvas.clientWidth || 800, this.canvas.clientHeight || 600, false);
       this.renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio || 1, 2));
 
@@ -85,8 +96,8 @@ export class Table3D {
       this.scene.background = new Color(BASE);
       this.scene.fog = new Fog(BASE, 80, 220);
 
-      // Camera positioned high, looking down at table
-      this.camera = new PerspectiveCamera(35, (this.canvas.clientWidth || 800) / (this.canvas.clientHeight || 600), 10, 400);
+      // Camera positioned high, looking down at table (near 20 prevents depth precision z-fighting)
+      this.camera = new PerspectiveCamera(31, (this.canvas.clientWidth || 800) / (this.canvas.clientHeight || 600), 20, 400);
       this.camera.position.set(0, 95, 45);
       this.camera.lookAt(0, 0, -2);
 
@@ -99,8 +110,13 @@ export class Table3D {
       dirLight.castShadow = true;
       const REACH = 115;
       Object.assign(dirLight.shadow.camera, { left: -REACH, right: REACH, top: REACH, bottom: -REACH, near: 1, far: 320 });
+      dirLight.shadow.mapSize.set(512, 512);
       dirLight.shadow.bias = -0.0004;
       dirLight.shadow.normalBias = 0.02;
+      const SOFTNESS = 0.8;
+      dirLight.shadow.radius = (SOFTNESS * 512) / (2 * REACH);
+      dirLight.shadow.blurSamples = 8;
+      dirLight.shadow.intensity = 0.8;
       this.scene.add(dirLight);
 
       this._createTableSurface();
@@ -128,14 +144,26 @@ export class Table3D {
     }
   }
 
+  fitInk(mat) {
+    if (!mat || !mat.uniforms || !this.renderer) return;
+    if (mat.uniforms.resolution?.value) {
+      this.renderer.getDrawingBufferSize(mat.uniforms.resolution.value);
+    }
+    if (mat.uniforms.inkWidth?.value !== undefined) {
+      mat.userData ??= {};
+      const cssWidth = mat.userData.cssWidth ?? mat.uniforms.inkWidth.value;
+      mat.userData.cssWidth = cssWidth;
+      mat.uniforms.inkWidth.value = cssWidth * this.renderer.getPixelRatio();
+    }
+  }
+
   registerInk(mat) {
     if (!mat || !mat.uniforms) return;
+    mat.userData ??= {};
+    mat.userData.cssWidth ??= mat.uniforms.inkWidth?.value ?? 2.5;
     this.inkMaterials.add(mat);
-    if (this.canvas) {
-      const w = this.canvas.clientWidth || 800;
-      const h = this.canvas.clientHeight || 600;
-      const pr = Math.min(globalThis.devicePixelRatio || 1, 2);
-      mat.uniforms.resolution.value.set(w * pr, h * pr);
+    if (this.renderer) {
+      this.fitInk(mat);
     }
   }
 
@@ -146,14 +174,9 @@ export class Table3D {
   }
 
   _updateInkResolution() {
-    if (!this.canvas) return;
-    const w = this.canvas.clientWidth || 800;
-    const h = this.canvas.clientHeight || 600;
-    const pr = Math.min(globalThis.devicePixelRatio || 1, 2);
+    if (!this.renderer) return;
     for (const mat of this.inkMaterials) {
-      if (mat.uniforms?.resolution?.value) {
-        mat.uniforms.resolution.value.set(w * pr, h * pr);
-      }
+      this.fitInk(mat);
     }
   }
 
@@ -229,18 +252,9 @@ export class Table3D {
 
   decorateCard(mesh, { line = "plain", dim = false } = {}) {
     if (!mesh || !mesh.children) return;
-    const inks = {
-      plain: { color: INK, width: 2.5 },
-      hover: { color: INK, width: 3.75 },
-      hint: { color: "#009fb7", width: 4.0 },
-      chosen: { color: "#e8900c", width: 4.0 },
-    };
     const inkChild = mesh.children.find((c) => c.userData?.isInkOutline);
     if (inkChild) {
-      const cfg = inks[line] || inks.plain;
-      if (inkChild.material) this.unregisterInk(inkChild.material);
-      inkChild.material = inkMaterial(cfg);
-      this.registerInk(inkChild.material);
+      inkChild.material = this.inks[line] || this.inks.plain;
     }
     if (Array.isArray(mesh.material) && mesh.material[0]) {
       mesh.material[0].color.setScalar(dim ? 0.72 : 1.0);
@@ -420,11 +434,6 @@ export class Table3D {
     // Clear old card meshes
     for (const mesh of this.cardMeshes) {
       this.scene.remove(mesh);
-      for (const child of mesh.children) {
-        if (child.userData?.isInkOutline && child.material) {
-          this.unregisterInk(child.material);
-        }
-      }
       if (Array.isArray(mesh.material)) {
         mesh.material.forEach((m) => m.dispose());
       } else if (mesh.material) {
@@ -461,16 +470,14 @@ export class Table3D {
 
       const mesh = new Mesh(this.cardGeom, materials);
       mesh.castShadow = true;
-      mesh.receiveShadow = true;
+      mesh.receiveShadow = false;
 
       const p = lying({ x, z, height: y, faceUp });
       mesh.position.copy(p.position);
       mesh.quaternion.copy(p.quaternion);
 
-      // Inverted-hull ink line outline child mesh
-      const inkMat = inkMaterial({ color: INK, width: 2.5 });
-      this.registerInk(inkMat);
-      const outlineMesh = new Mesh(this.cardGeom, inkMat);
+      // Inverted-hull ink line outline child mesh using shared plain ink
+      const outlineMesh = new Mesh(this.cardGeom, this.inks.plain);
       outlineMesh.userData = { isInkOutline: true };
       mesh.add(outlineMesh);
 
@@ -599,6 +606,14 @@ export class Table3D {
     }
     if (typeof window !== "undefined" && this._onResize) {
       window.removeEventListener("resize", this._onResize);
+    }
+    if (this.inks) {
+      for (const mat of Object.values(this.inks)) {
+        if (mat?.dispose) mat.dispose();
+      }
+    }
+    if (this.cardGeom?.dispose) {
+      this.cardGeom.dispose();
     }
     if (this.renderer) {
       this.renderer.dispose();

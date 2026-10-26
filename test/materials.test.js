@@ -90,4 +90,9 @@ test("inkMaterial creates inverted hull outline ShaderMaterial", () => {
   assert.ok(mat.vertexShader.includes("outlineNormal"));
   assert.ok(mat.vertexShader.includes("inkWidth"));
   assert.ok(mat.fragmentShader.includes("inkColor"));
+
+  assert.equal(mat.polygonOffset, true);
+  assert.equal(mat.polygonOffsetFactor, 1.0);
+  assert.equal(mat.polygonOffsetUnits, 1.0);
+  assert.ok(mat.vertexShader.includes("MAX_PUSH = 0.12"));
 });

@@ -145,3 +145,58 @@ test("InteractionController drag-and-drop cancels on invalid drop slot", () => {
   assert.equal(interaction.draggedSource, null);
   assert.equal(table.cleared, true);
 });
+
+test("InteractionController clicking or tapping Stock pile triggers onDraw", () => {
+  const table = new MockTable3D();
+  let state = createTestState();
+  let draws = 0;
+
+  const interaction = new InteractionController({
+    table,
+    getGameState: () => state,
+    onDraw: () => { draws += 1; },
+  });
+
+  // Clicking stock card directly
+  interaction.handleCardClick({ sourceSlot: "s", cardCode: "BACK" });
+  assert.equal(draws, 1);
+
+  // Clicking stock slot
+  interaction.handleSlotClick("s");
+  assert.equal(draws, 2);
+
+  // Clicking player 0 stock alias "s0"
+  interaction.handleCardClick({ sourceSlot: "s0", cardCode: "BACK" });
+  assert.equal(draws, 3);
+});
+
+test("InteractionController clicking or tapping Waste pile with drawn card triggers onWaste", () => {
+  const table = new MockTable3D();
+  let state = {
+    ...createTestState(),
+    drawnCard: { code: "5D", suit: "D", rank: 5, deck: 0 },
+    legal: ["waste", "m drawn>t3"],
+  };
+  let wastes = 0;
+
+  const interaction = new InteractionController({
+    table,
+    getGameState: () => state,
+    onWaste: () => { wastes += 1; },
+  });
+
+  // Clicking waste pile directly
+  interaction.handleCardClick({ sourceSlot: "w", cardCode: "9C" });
+  assert.equal(wastes, 1);
+
+  // Clicking waste slot
+  interaction.handleSlotClick("w");
+  assert.equal(wastes, 2);
+
+  // Dragging drawn card to waste slot triggers onWaste
+  interaction.handleDragStart({ sourceSlot: "drawn", cardCode: "5D" });
+  assert.equal(interaction.draggedSource, "drawn");
+  interaction.handleDragEnd("w");
+  assert.equal(wastes, 3);
+  assert.equal(interaction.draggedSource, null);
+});

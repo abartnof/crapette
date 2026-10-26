@@ -73,7 +73,7 @@ export function inkMaterial({ color = INK, width = 2.5 } = {}) {
       uniform float inkWidth;
       uniform vec2 resolution;
       const float PROBE = 0.1;    // cm: how far along the normal to look
-      const float MAX_PUSH = 1.0; // cm: an edge seen end-on gets no wider than this
+      const float MAX_PUSH = 0.12; // cm: edge width capped to prevent inverted-hull puncture
       void main() {
         vec4 clip = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         vec4 ahead = projectionMatrix * modelViewMatrix * vec4(position + outlineNormal * PROBE, 1.0);
@@ -88,5 +88,8 @@ export function inkMaterial({ color = INK, width = 2.5 } = {}) {
         #include <colorspace_fragment>
       }`,
     side: BackSide,
+    polygonOffset: true,
+    polygonOffsetFactor: 1.0,
+    polygonOffsetUnits: 1.0,
   });
 }
