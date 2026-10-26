@@ -3,13 +3,18 @@
 - **Game Design & Heritage**:
   - *Crapette* (also known as *Russian Bank*, *Zank-Patience*, *Streitpatience*, *Tunj*, and *Touch*), historical competitive patience card game dating to the late 19th century.
   - Rules and variations codified by John McLeod at [Pagat.com](https://www.pagat.com/patience/crapette.html).
-- **Core 3D Card Architecture**:
-  - Derived from `card_toolkit` by Abe Ratnofsky (`@abartnof`), including:
-    - Inverted-hull ink line shader (`materials.js`)
-    - Three-group card slab geometry (`cards.js`)
+- **Core 3D Card Architecture & Visual System**:
+  - Borrowed and derived from `cassino` and `card_toolkit` by Abe Ratnofsky (`@abartnof`), including:
+    - 52 WebP classic card face textures and Baraja lace pattern card backs (`web3d/art/cards/`)
+    - Inverted-hull ink line outline shader and toon ramp cel-shading (`materials.js`)
+    - Three-group card slab geometry with outline normals (`cards.js`)
+    - Dual-deck management with selection inks and unplayable card dimming (`deck.js`)
+    - 18 procedural monochrome seamless table surface patterns (`surfaces.js`)
+    - Physics engine, motion primitives, and M3 easing curves (`kinematics.js`, `easing.js`, `timeline.js`)
+    - Material Design 3 top chrome toolbar, dialogs (Settings, New Game, Help), and CSS tokens (`chrome.js`, `style.css`)
+    - Floating scorebug with 13-segment reserve countdown tracker lines and spring-animated badges (`hud.js`, `overlay.js`)
     - Vector width texture scaling and Canvas 2D Jumbo Index rendering (`faces.js`, `art.js`)
-    - Clock timeline and animation director (`director.js`, `timeline.js`, `kinematics.js`)
-    - Single-file HTML inliner (`build.py`)
+    - Single-file HTML inliner with embedded assets (`build.py`)
 - **Random Number Generation**:
   - `xoshiro256**` seeded by SplitMix64 PRNG algorithm by Sebastiano Vigna and David Blackman.
 - **Three.js**:

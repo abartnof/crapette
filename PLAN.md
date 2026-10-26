@@ -113,3 +113,12 @@ crapette/
   - Build pipeline via `build.py` generating standalone `crapette.html`.
   - Verify zero console errors, smooth 60fps animations.
   - Full verification with `bin/gate`.
+
+- [x] **Phase 7: Borrow GUI Architecture & Visual Language from Cassino**
+  - **Textures & Art Assets**: Inlined 52 classic WebP card faces plus dual Baraja card backs (`back-red.webp` for Player 1 / Royal Crimson and `back-blue.webp` for Player 2 / Midnight Navy).
+  - **Cards & Geometry**: Inverted-hull ink outline ShaderMaterial (`materials.js`) with toon ramps, rounded slab BufferGeometry (`cards.js`), and dual-deck manager (`deck.js`) with selection inks and unplayable card dimming.
+  - **Procedural Surfaces**: 18 procedural monochrome seamless table surface patterns (`surfaces.js`), selectable in settings.
+  - **Physics & Kinematics**: Complete kinematic motion primitives (`kinematics.js`), M3 easing curves (`easing.js`), and clock timeline (`timeline.js`) ensuring non-penetration and clearance arcs.
+  - **HUD & Scorebug**: Cassino-style floating scorebug with 13-segment reserve countdown tracker lines, spring-animated badges, collapsible trackers panel, celebration popups, and pulsing "CALL CRAPETTE!" blunder alert button (`hud.js`, `overlay.js`).
+  - **Chrome & Menu Visuals**: Material Design 3 top chrome toolbar (`chrome.js`) with `@material/web` icon buttons, Settings dialog, New Game dialog, Credits dialog, and full M3 design system tokens (`style.css`).
+  - **Testing**: 434 passing Node.js unit tests, 25 Python build tests, with standalone self-contained `crapette.html` verified by `bin/gate`.
