@@ -16,6 +16,7 @@ import { SoundSynthesizer } from "./audio.js";
 import { Table3D } from "./table3d.js";
 import { HUD } from "./hud.js";
 import { InteractionController } from "./interaction.js";
+import { loadTextures } from "./art.js";
 
 export class GameController {
   constructor({
@@ -111,8 +112,12 @@ export class GameController {
   }
 
   changeFelt(felt) {
-    if (this.table && typeof this.table.setFelt === "function") {
-      this.table.setFelt(felt);
+    if (this.table) {
+      if (typeof this.table.setSurface === "function") {
+        this.table.setSurface(felt);
+      } else if (typeof this.table.setFelt === "function") {
+        this.table.setFelt(felt);
+      }
     }
   }
 
@@ -390,6 +395,18 @@ export function init() {
   sound.attachGestureUnlock(window);
 
   const table = new Table3D({ canvas });
+
+  if (typeof ART !== "undefined" && ART) {
+    loadTextures(ART, { pixelRatio: globalThis.devicePixelRatio || 1 })
+      .then((textures) => {
+        if (table && typeof table.setTextures === "function") {
+          table.setTextures(textures);
+        }
+      })
+      .catch((err) => {
+        console.warn("Unable to load embedded art textures:", err);
+      });
+  }
 
   let controller = null;
 

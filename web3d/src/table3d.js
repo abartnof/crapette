@@ -12,6 +12,7 @@ import {
   PlaneGeometry,
   BoxGeometry,
   Raycaster,
+  RepeatWrapping,
   Scene,
   Vector2,
   WebGLRenderer,
@@ -19,16 +20,20 @@ import {
   SRGBColorSpace,
 } from "three";
 import { CARD, TABLE } from "./units.js";
+import { inkMaterial, INK } from "./materials.js";
+import { PATTERNS, drawSurface, BASE } from "./surfaces.js";
 
 const SUIT_SYMBOLS = { S: "♠", H: "♥", D: "♦", C: "♣" };
 const SUIT_COLORS = { S: "#15171c", H: "#c8202c", D: "#c8202c", C: "#15171c" };
 
 export class Table3D {
-  constructor({ canvas, headless = false } = {}) {
+  constructor({ canvas, headless = false, textures = null } = {}) {
     this.canvas = canvas;
     this.headless = headless;
+    this.textures = textures;
     this.activeHighlights = [];
     this.lastSyncedState = null;
+    this.surfaceId = "slate";
 
     this.scene = null;
     this.camera = null;
@@ -41,6 +46,13 @@ export class Table3D {
 
     if (!this.headless && this.canvas) {
       this._initThree();
+    }
+  }
+
+  setTextures(textures) {
+    this.textures = textures;
+    if (this.lastSyncedState) {
+      this.sync(this.lastSyncedState);
     }
   }
 
@@ -121,11 +133,59 @@ export class Table3D {
     };
     const c = feltColors[felt] || feltColors.slate;
     if (this.tableMesh && this.tableMesh.material) {
+      this.tableMesh.material.map = null;
       this.tableMesh.material.color.set(c.felt);
+      this.tableMesh.material.needsUpdate = true;
     }
     this.scene.background = new Color(c.bg);
     if (this.scene.fog) {
       this.scene.fog.color.set(c.bg);
+    }
+  }
+
+  setSurface(id) {
+    this.surfaceId = id;
+    if (this.headless || !this.scene) return;
+    const pattern = PATTERNS.find((p) => p.id === id);
+    if (pattern && typeof document !== "undefined") {
+      const canvas = document.createElement("canvas");
+      canvas.width = 1024;
+      canvas.height = 1024;
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        drawSurface(ctx, pattern);
+        const texture = new CanvasTexture(canvas);
+        texture.wrapS = RepeatWrapping;
+        texture.wrapT = RepeatWrapping;
+        texture.repeat.set(6, 4);
+        if (this.tableMesh && this.tableMesh.material) {
+          this.tableMesh.material.map = texture;
+          this.tableMesh.material.color.set("#ffffff");
+          this.tableMesh.material.needsUpdate = true;
+        }
+        this.scene.background = new Color(BASE);
+        if (this.scene.fog) this.scene.fog.color.set(BASE);
+        return;
+      }
+    }
+    this.setFelt(id);
+  }
+
+  decorateCard(mesh, { line = "plain", dim = false } = {}) {
+    if (!mesh || !mesh.children) return;
+    const inks = {
+      plain: INK,
+      hover: "#1d2433",
+      hint: "#009fb7",
+      chosen: "#e8900c",
+    };
+    const widths = { plain: 2.0, hover: 3.2, hint: 3.5, chosen: 3.5 };
+    const inkChild = mesh.children.find((c) => c.userData?.isInkOutline);
+    if (inkChild) {
+      inkChild.material = inkMaterial({ color: inks[line] || INK, width: widths[line] || 2.0 });
+    }
+    if (Array.isArray(mesh.material) && mesh.material[2]) {
+      mesh.material[2].color.setScalar(dim ? 0.72 : 1.0);
     }
   }
 
@@ -336,11 +396,23 @@ export class Table3D {
     const geom = new BoxGeometry(CARD.width, CARD.thickness, CARD.height);
 
     const addCardMesh = (card, slotKey, x, y, z, faceUp = true) => {
-      const faceTex = this._getCardFaceTexture(card.code);
-      const backTex = this._getCardBackTexture(card.deck ?? 0);
+      let faceTex = null;
+      let backTex = null;
+
+      if (this.textures) {
+        faceTex = this.textures.faces?.[card.code] || null;
+        if (card.deck === 0) {
+          backTex = this.textures.backs?.red || this.textures.backRed || this.textures.back || null;
+        } else {
+          backTex = this.textures.backs?.blue || this.textures.backBlue || this.textures.back || null;
+        }
+      }
+
+      if (!faceTex) faceTex = this._getCardFaceTexture(card.code);
+      if (!backTex) backTex = this._getCardBackTexture(card.deck ?? 0);
 
       const faceMat = new MeshStandardMaterial({ map: faceTex || undefined, color: faceTex ? "#ffffff" : "#faf8f2" });
-      const backMat = new MeshStandardMaterial({ map: backTex || undefined, color: card.deck === 0 ? "#c8202c" : "#1d3557" });
+      const backMat = new MeshStandardMaterial({ map: backTex || undefined, color: backTex ? "#ffffff" : (card.deck === 0 ? "#c8202c" : "#1d3557") });
       const edgeMat = new MeshStandardMaterial({ color: "#f3efe6" });
 
       // Materials order: +x, -x, +y (top face), -y (bottom back), +z, -z
@@ -348,11 +420,20 @@ export class Table3D {
 
       const mesh = new Mesh(geom, materials);
       mesh.position.set(x, y, z);
+
+      // Inverted-hull ink line outline child mesh
+      const inkOutlineGeom = new BoxGeometry(CARD.width, CARD.thickness, CARD.height);
+      const inkMat = inkMaterial({ color: INK, width: 2.0 });
+      const outlineMesh = new Mesh(inkOutlineGeom, inkMat);
+      outlineMesh.userData = { isInkOutline: true };
+      mesh.add(outlineMesh);
+
       mesh.userData = {
         cardCode: card.code,
         sourceSlot: slotKey,
         isTop: true,
         isMovable: true,
+        deck: card.deck ?? 0,
       };
 
       this.scene.add(mesh);
