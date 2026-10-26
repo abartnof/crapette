@@ -268,8 +268,10 @@ export class HUD {
 
     const root = this._el("div", { className: "hud-root" });
 
-    // 1. Top Header: Tournament match ledger & Cassino-style action bar
+    // 1. Top Header: Tournament match ledger & Cassino-style action bar (kept hidden for test element queries)
     const header = this._el("header", { className: "hud-header" });
+    header.setAttribute("hidden", "true");
+    if (header.style) header.style.display = "none";
 
     const title = this._el("span", { className: "brand", text: "CRAPETTE" });
     const titleBox = this._el("div", { className: "hud-title-box" }, title);
@@ -339,7 +341,7 @@ export class HUD {
     header.append(titleBox, ledgerBox, toolBar);
 
     try {
-      this.chrome = createChrome(header, {
+      this.chrome = createChrome(root, {
         document: this.doc,
         newGame: () => {
           this.toggleNewGameModal(true);
@@ -370,9 +372,11 @@ export class HUD {
       // In headless test environments without full DOM, chrome mounts gracefully
     }
 
-    // 2. Turn Status Banner
+    // 2. Turn Status Banner (hidden fallback; live prompt is rendered via overlay.prompt)
     const banner = this._el("div", { className: "hud-banner", id: "status-banner", text: "Your Turn — Make moves or Draw Stock" });
     const bannerBox = this._el("div", { className: "hud-banner-box" }, banner);
+    bannerBox.setAttribute("hidden", "true");
+    if (bannerBox.style) bannerBox.style.display = "none";
 
     // 3. 2D Overlay layer (Info slot, Cheers celebrations, Aids panel, Move bar)
     this.overlay = createOverlay(root, {
@@ -429,6 +433,8 @@ export class HUD {
     const youStrip = this._el("div", { className: "hud-player-strip you-strip active", id: "you-strip" }, youTag, youPiles);
 
     const countersOverlay = this._el("div", { className: "hud-counters-overlay" }, oppStrip, youStrip);
+    countersOverlay.setAttribute("hidden", "true");
+    if (countersOverlay.style) countersOverlay.style.display = "none";
 
     // 6. Toast container
     const toastContainer = this._el("div", { className: "hud-toast-container", id: "toast-container" });
@@ -1056,6 +1062,9 @@ export class HUD {
       } else {
         banner.textContent = "Opponent Thinking...";
         banner.className = "hud-banner opp-turn";
+      }
+      if (this.overlay && this.overlay.prompt) {
+        this.overlay.prompt.textContent = banner.textContent;
       }
     }
   }

@@ -8,6 +8,8 @@ import {
   Mesh,
   MeshBasicMaterial,
   MeshStandardMaterial,
+  MeshToonMaterial,
+  ShadowMaterial,
   PerspectiveCamera,
   PlaneGeometry,
   BoxGeometry,
@@ -21,7 +23,8 @@ import {
 } from "three";
 import { CARD, TABLE } from "./units.js";
 import { inkMaterial, INK } from "./materials.js";
-import { PATTERNS, drawSurface, BASE } from "./surfaces.js";
+import { PATTERNS, drawSurface, chooseSurface, BASE } from "./surfaces.js";
+import { drawJumbo } from "./faces.js";
 
 const SUIT_SYMBOLS = { S: "♠", H: "♥", D: "♦", C: "♣" };
 const SUIT_COLORS = { S: "#15171c", H: "#c8202c", D: "#c8202c", C: "#15171c" };
@@ -31,9 +34,10 @@ export class Table3D {
     this.canvas = canvas;
     this.headless = headless;
     this.textures = textures;
+    this.facesMode = "jumbo"; // High-viz Jumbo Index cards by default
     this.activeHighlights = [];
     this.lastSyncedState = null;
-    this.surfaceId = "slate";
+    this.surfaceId = "dot-grid";
 
     this.scene = null;
     this.camera = null;
@@ -49,6 +53,14 @@ export class Table3D {
     }
   }
 
+  setFaces(mode) {
+    this.facesMode = mode === "classic" ? "classic" : "jumbo";
+    this.textureCache.clear();
+    if (this.lastSyncedState) {
+      this.sync(this.lastSyncedState);
+    }
+  }
+
   setTextures(textures) {
     this.textures = textures;
     if (this.lastSyncedState) {
@@ -60,24 +72,30 @@ export class Table3D {
     try {
       this.renderer = new WebGLRenderer({ canvas: this.canvas, antialias: true });
       this.renderer.outputColorSpace = SRGBColorSpace;
+      this.renderer.shadowMap.enabled = true;
       this.renderer.setSize(this.canvas.clientWidth || 800, this.canvas.clientHeight || 600, false);
       this.renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio || 1, 2));
 
       this.scene = new Scene();
-      this.scene.background = new Color("#164529");
-      this.scene.fog = new Fog("#164529", 80, 220);
+      this.scene.background = new Color(BASE);
+      this.scene.fog = new Fog(BASE, 80, 220);
 
       // Camera positioned high, looking down at table
       this.camera = new PerspectiveCamera(35, (this.canvas.clientWidth || 800) / (this.canvas.clientHeight || 600), 10, 400);
       this.camera.position.set(0, 95, 45);
       this.camera.lookAt(0, 0, -2);
 
-      // Lights
-      const hemiLight = new HemisphereLight("#ffffff", "#98a89e", 1.4);
+      // Lights matching Cassino
+      const hemiLight = new HemisphereLight("#ffffff", "#d8dbe3", 1.7);
       this.scene.add(hemiLight);
 
-      const dirLight = new DirectionalLight("#ffffff", 1.5);
-      dirLight.position.set(-30, 80, 40);
+      const dirLight = new DirectionalLight("#ffffff", 1.6);
+      dirLight.position.set(-34, 70, 46);
+      dirLight.castShadow = true;
+      const REACH = 115;
+      Object.assign(dirLight.shadow.camera, { left: -REACH, right: REACH, top: REACH, bottom: -REACH, near: 1, far: 320 });
+      dirLight.shadow.bias = -0.0004;
+      dirLight.shadow.normalBias = 0.02;
       this.scene.add(dirLight);
 
       this._createTableSurface();
@@ -110,65 +128,78 @@ export class Table3D {
   }
 
   _createTableSurface() {
-    const tableGeom = new PlaneGeometry(TABLE.width, TABLE.depth);
-    const tableMat = new MeshStandardMaterial({
-      color: "#18221c",
-      roughness: 0.85,
-      metalness: 0.1,
+    const WIDE = TABLE.width || 120;
+    const DEEP = TABLE.depth || 90;
+    const tableGeom = new PlaneGeometry(WIDE, DEEP);
+
+    let canvas = null;
+    if (typeof document !== "undefined") {
+      canvas = document.createElement("canvas");
+      canvas.width = 1024;
+      canvas.height = 1024;
+      this.surfaceTexture = new CanvasTexture(canvas);
+      this.surfaceTexture.wrapS = RepeatWrapping;
+      this.surfaceTexture.wrapT = RepeatWrapping;
+      this.surfaceTexture.colorSpace = SRGBColorSpace;
+      const TILE_CM = 48;
+      this.surfaceTexture.repeat.set(WIDE / TILE_CM, DEEP / TILE_CM);
+    }
+
+    const tableMat = new MeshBasicMaterial({
+      map: this.surfaceTexture || null,
+      color: "#edeef0",
     });
     this.tableMesh = new Mesh(tableGeom, tableMat);
     this.tableMesh.rotation.x = -Math.PI / 2;
     this.tableMesh.position.y = -0.05;
     this.scene.add(this.tableMesh);
+
+    // Cassino soft shadow receiver plane
+    const shadeMat = new ShadowMaterial({ color: "#14161a", opacity: 0.3 });
+    const shade = new Mesh(new PlaneGeometry(WIDE, DEEP), shadeMat);
+    shade.rotation.x = -Math.PI / 2;
+    shade.position.set(0, 0.005, 0);
+    shade.receiveShadow = true;
+    this.scene.add(shade);
+
+    // Wood trim underneath
+    const woodMat = new MeshToonMaterial({ color: "#9a6b43" });
+    const wood = new Mesh(new BoxGeometry(WIDE, 3, DEEP), woodMat);
+    wood.position.set(0, -1.55, 0);
+    this.scene.add(wood);
+
+    try {
+      this.setSurface(chooseSurface({ chosen: "dot-grid" }));
+    } catch (e) {}
   }
 
   setFelt(felt) {
-    this.felt = felt;
-    if (this.headless || !this.scene) return;
-    const feltColors = {
-      slate: { felt: "#18221c", bg: "#0e1511" },
-      casino: { felt: "#1c5233", bg: "#164529" },
-      navy: { felt: "#16253b", bg: "#0d1726" },
-      charcoal: { felt: "#24282c", bg: "#171a1d" },
-    };
-    const c = feltColors[felt] || feltColors.slate;
-    if (this.tableMesh && this.tableMesh.material) {
-      this.tableMesh.material.map = null;
-      this.tableMesh.material.color.set(c.felt);
-      this.tableMesh.material.needsUpdate = true;
-    }
-    this.scene.background = new Color(c.bg);
-    if (this.scene.fog) {
-      this.scene.fog.color.set(c.bg);
-    }
+    this.setSurface(felt);
   }
 
   setSurface(id) {
     this.surfaceId = id;
     if (this.headless || !this.scene) return;
-    const pattern = PATTERNS.find((p) => p.id === id);
+    const pattern = PATTERNS.find((p) => p.id === id) || PATTERNS.find((p) => p.id === "dot-grid") || PATTERNS[0];
     if (pattern && typeof document !== "undefined") {
-      const canvas = document.createElement("canvas");
-      canvas.width = 1024;
-      canvas.height = 1024;
+      let canvas = this.surfaceTexture ? this.surfaceTexture.image : null;
+      if (!canvas || !canvas.getContext) {
+        canvas = document.createElement("canvas");
+        canvas.width = 1024;
+        canvas.height = 1024;
+      }
       const ctx = canvas.getContext("2d");
       if (ctx) {
         drawSurface(ctx, pattern);
-        const texture = new CanvasTexture(canvas);
-        texture.wrapS = RepeatWrapping;
-        texture.wrapT = RepeatWrapping;
-        texture.repeat.set(6, 4);
-        if (this.tableMesh && this.tableMesh.material) {
-          this.tableMesh.material.map = texture;
-          this.tableMesh.material.color.set("#ffffff");
-          this.tableMesh.material.needsUpdate = true;
+        if (this.surfaceTexture) {
+          this.surfaceTexture.image = canvas;
+          this.surfaceTexture.needsUpdate = true;
         }
-        this.scene.background = new Color(BASE);
-        if (this.scene.fog) this.scene.fog.color.set(BASE);
-        return;
       }
+      this.scene.background = new Color(BASE);
+      if (this.scene.fog) this.scene.fog.color.set(BASE);
+      return;
     }
-    this.setFelt(id);
   }
 
   decorateCard(mesh, { line = "plain", dim = false } = {}) {
@@ -260,9 +291,9 @@ export class Table3D {
     for (const key of allSlots) {
       const pos = this._getSlotCoordinates(key);
       const mat = new MeshBasicMaterial({
-        color: "#184028",
+        color: "#1d2433",
         transparent: true,
-        opacity: 0.7,
+        opacity: 0.08,
       });
       const mesh = new Mesh(geom, mat);
       mesh.rotation.x = -Math.PI / 2;
@@ -281,11 +312,11 @@ export class Table3D {
     for (const [key, mesh] of this.slotMeshes.entries()) {
       const isHighlighted = slotKeys.includes(key) || (key.startsWith("h") && slotKeys.includes("h"));
       if (isHighlighted) {
-        mesh.material.color.set("#ffbe0b");
-        mesh.material.opacity = 0.95;
+        mesh.material.color.set("#009fb7");
+        mesh.material.opacity = 0.35;
       } else {
-        mesh.material.color.set("#184028");
-        mesh.material.opacity = 0.7;
+        mesh.material.color.set("#1d2433");
+        mesh.material.opacity = 0.08;
       }
     }
   }
@@ -295,8 +326,8 @@ export class Table3D {
     if (this.headless) return;
 
     for (const mesh of this.slotMeshes.values()) {
-      mesh.material.color.set("#184028");
-      mesh.material.opacity = 0.7;
+      mesh.material.color.set("#1d2433");
+      mesh.material.opacity = 0.08;
     }
   }
 
@@ -306,38 +337,16 @@ export class Table3D {
     }
     if (typeof document === "undefined") return null;
 
+    const width = 512;
+    const height = Math.round(width * (7 / 5));
     const canvas = document.createElement("canvas");
-    canvas.width = 128;
-    canvas.height = 180;
+    canvas.width = width;
+    canvas.height = height;
     const ctx = canvas.getContext("2d");
     if (!ctx) return null;
 
-    // Card white background
-    ctx.fillStyle = "#faf8f2";
-    ctx.fillRect(0, 0, 128, 180);
-
-    // Border
-    ctx.strokeStyle = "#22252a";
-    ctx.lineWidth = 3;
-    ctx.strokeRect(4, 4, 120, 172);
-
-    const rank = code.slice(0, -1);
-    const suit = code.slice(-1);
-    const color = SUIT_COLORS[suit] || "#15171c";
-    const symbol = SUIT_SYMBOLS[suit] || suit;
-
-    ctx.fillStyle = color;
-    ctx.font = "bold 24px -apple-system, sans-serif";
-    ctx.fillText(rank, 12, 32);
-
-    ctx.font = "26px sans-serif";
-    ctx.fillText(symbol, 12, 60);
-
-    // Center big suit
-    ctx.font = "52px sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(symbol, 64, 105);
+    // Use Cassino's High-Viz Jumbo Index renderer
+    drawJumbo(ctx, width, code);
 
     const texture = new CanvasTexture(canvas);
     texture.colorSpace = SRGBColorSpace;
@@ -399,8 +408,13 @@ export class Table3D {
       let faceTex = null;
       let backTex = null;
 
+      if (this.facesMode === "classic" && this.textures && this.textures.faces?.[card.code]) {
+        faceTex = this.textures.faces[card.code];
+      } else {
+        faceTex = this._getCardFaceTexture(card.code);
+      }
+
       if (this.textures) {
-        faceTex = this.textures.faces?.[card.code] || null;
         if (card.deck === 0) {
           backTex = this.textures.backs?.red || this.textures.backRed || this.textures.back || null;
         } else {
@@ -408,7 +422,6 @@ export class Table3D {
         }
       }
 
-      if (!faceTex) faceTex = this._getCardFaceTexture(card.code);
       if (!backTex) backTex = this._getCardBackTexture(card.deck ?? 0);
 
       const faceMat = new MeshStandardMaterial({ map: faceTex || undefined, color: faceTex ? "#ffffff" : "#faf8f2" });

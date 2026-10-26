@@ -121,6 +121,12 @@ export class GameController {
     }
   }
 
+  changeFaces(mode) {
+    if (this.table && typeof this.table.setFaces === "function") {
+      this.table.setFaces(mode);
+    }
+  }
+
   requestHint() {
     if (this.game.winner != null) return;
     const hint = generateHint(this.game);
@@ -422,6 +428,7 @@ export function init() {
     onHint: () => controller?.requestHint(),
     onOpenSettings: () => controller?.hud.toggleSettingsModal(true),
     onChangeFelt: (felt) => controller?.changeFelt(felt),
+    onChangeFaces: (faces) => controller?.changeFaces(faces),
     onResetTutorial: () => controller?.resetTutorials(),
     onDismissTutorial: (data) => controller?.handleTutorialDismiss(data),
     onToggleSound: () => {

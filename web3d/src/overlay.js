@@ -308,9 +308,10 @@ export function createOverlay(root, {
   const placeActions = el("div", { className: "place actions-place" }, drawChip, wasteChip, undoChip);
   const placeCrapette = el("div", { className: "place crapette-place" }, crapetteBtn);
   const chipsGroup = el("div", { className: "chips", role: "group", "aria-label": "Player actions" }, placeCrapette, placeActions);
+  const prompt = el("p", { className: "prompt", id: "status-banner", "aria-live": "polite" });
   const moveBar = el("div", { className: "move-bar" }, chipsGroup);
 
-  const controls = el("section", { className: "controls" }, moveBar);
+  const controls = el("section", { className: "controls" }, prompt, moveBar);
 
   root.append(badges, cheers, info, aidsPanel, controls);
 
@@ -338,6 +339,7 @@ export function createOverlay(root, {
     hudSlot,
     cheers,
     badges,
+    prompt,
     aidsPanel,
     crapetteBtn,
     drawChip,
