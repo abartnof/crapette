@@ -64,6 +64,10 @@ export class GameController {
 
   setGameMode(mode) {
     this.gameMode = mode;
+    if (mode === "human_vs_ai" && this.aiTimer) {
+      clearTimeout(this.aiTimer);
+      this.aiTimer = null;
+    }
     if (this.hud && typeof this.hud.setMode === "function") {
       this.hud.setMode(mode);
     }
@@ -81,6 +85,10 @@ export class GameController {
   }
 
   initGame(dealSeed = null) {
+    if (this.aiTimer) {
+      clearTimeout(this.aiTimer);
+      this.aiTimer = null;
+    }
     if (dealSeed !== null && dealSeed !== undefined) {
       this.seed = BigInt(dealSeed);
     } else if (this.seed === undefined) {
@@ -377,8 +385,8 @@ export class GameController {
 
       this._syncAll();
 
-      if (this.game.winner === null) {
-        if (this.gameMode === "ai_vs_ai" || this.game.activePlayer === 1) {
+      if (this.game.winner == null) {
+        if (this.stepDelayMs >= 0 && (this.gameMode === "ai_vs_ai" || this.game.activePlayer === 1)) {
           this._scheduleAiTurn();
         }
       } else {
@@ -387,6 +395,17 @@ export class GameController {
     } finally {
       this.isAiRunning = false;
     }
+  }
+
+  destroy() {
+    if (this.aiTimer) {
+      clearTimeout(this.aiTimer);
+      this.aiTimer = null;
+    }
+  }
+
+  stop() {
+    this.destroy();
   }
 }
 

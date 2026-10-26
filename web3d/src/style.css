@@ -312,6 +312,12 @@ html, body {
   gap: 2px;
   padding: 4px 6px 4px 16px;
   border-radius: 28px;
+  z-index: 20;
+  pointer-events: auto;
+}
+.bar md-icon-button {
+  pointer-events: auto;
+  cursor: pointer;
 }
 .brand {
   font-weight: 650;
@@ -642,9 +648,9 @@ html.sideways .aid-toggles {
 }
 .hud-side {
   display: grid;
-  grid-template-columns: 2.6em 1fr;
+  grid-template-columns: 3.2em 1fr;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 .hud-line {
   flex: 1;

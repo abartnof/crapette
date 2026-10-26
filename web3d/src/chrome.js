@@ -12,6 +12,7 @@ import "@material/web/select/select-option.js";
 import "@material/web/switch/switch.js";
 import "@material/web/labs/segmentedbutton/outlined-segmented-button.js";
 import "@material/web/labs/segmentedbuttonset/outlined-segmented-button-set.js";
+import { PATTERNS } from "./surfaces.js";
 
 // Simple stroked icons matching Cassino & Piquet
 const ICONS = {
@@ -33,12 +34,7 @@ const SYMBOLS = {
   help: "M478-240q21 0 35.5-14.5T528-290q0-21-14.5-35.5T478-340q-21 0-35.5 14.5T428-290q0 21 14.5 35.5T478-240Zm-36-154h74q0-33 7.5-52t42.5-52q26-26 41-49.5t15-56.5q0-56-41-86t-97-30q-57 0-92.5 30T342-618l66 26q5-18 22.5-39t53.5-21q32 0 48 17.5t16 38.5q0 20-12 37.5T506-526q-44 39-54 59t-10 73Zm38 314q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z",
 };
 
-export const FELT_PATTERNS = [
-  { id: "slate", name: "Slate Forest Felt (Cassino)" },
-  { id: "casino", name: "Classic Casino Green Felt" },
-  { id: "navy", name: "Midnight Navy Felt" },
-  { id: "charcoal", name: "Deep Charcoal Felt" },
-];
+export const FELT_PATTERNS = PATTERNS.map((p) => ({ id: p.id, name: p.name }));
 
 export const AI_SKILL_OPTIONS = [
   { value: "4.0", label: "Master (Strict, optimal play)" },
@@ -201,26 +197,41 @@ export function createChrome(root, on = {}) {
   };
 
   // ---- 2. Settings Dialog ---------------------------------------------------
-  const surfaceOptions = FELT_PATTERNS.map((p) =>
-    el("md-select-option", { value: p.id, selected: p.id === "slate" }, el("div", { slot: "headline" }, p.name))
-  );
-  const surface = el("md-outlined-select", { "data-pref": "surface", label: "Tabletop Surface" }, ...surfaceOptions);
-  surface.addEventListener("change", () => on.pref?.("surface", surface.value));
+  const surfaceOptions = [
+    el("md-select-option", { value: "dot-grid", selected: true }, el("div", { slot: "headline" }, "Dot grid (Cassino default)")),
+    ...PATTERNS.filter((p) => p.id !== "dot-grid").map((p) =>
+      el("md-select-option", { value: p.id }, el("div", { slot: "headline" }, p.name))
+    ),
+  ];
+  const surface = el("md-outlined-select", { "data-pref": "surface", label: "Tabletop Surface", value: "dot-grid" }, ...surfaceOptions);
+  surface.addEventListener("change", () => {
+    on.pref?.("surface", surface.value);
+    on.surface?.(surface.value);
+  });
 
   const facesOptions = [
-    el("md-select-option", { value: "classic", selected: true }, el("div", { slot: "headline" }, "Classic Inked Faces")),
-    el("md-select-option", { value: "jumbo" }, el("div", { slot: "headline" }, "Large Text Jumbo Index (High Contrast)")),
+    el("md-select-option", { value: "jumbo", selected: true }, el("div", { slot: "headline" }, "High-Viz Jumbo Index (Cassino default)")),
+    el("md-select-option", { value: "classic" }, el("div", { slot: "headline" }, "Classic Inked Faces")),
   ];
-  const faces = el("md-outlined-select", { "data-pref": "faces", label: "Card Art & Index" }, ...facesOptions);
-  faces.addEventListener("change", () => on.pref?.("faces", faces.value));
+  const faces = el("md-outlined-select", { "data-pref": "faces", label: "Card Art & Index", value: "jumbo" }, ...facesOptions);
+  faces.addEventListener("change", () => {
+    on.pref?.("faces", faces.value);
+    on.faces?.(faces.value);
+  });
 
   const skillOptions = AI_SKILL_OPTIONS.map((s) =>
     el("md-select-option", { value: s.value, selected: s.value === "4.0" }, el("div", { slot: "headline" }, s.label))
   );
-  const skill = el("md-outlined-select", { "data-pref": "skill", label: "AI Opponent Difficulty" }, ...skillOptions);
-  skill.addEventListener("change", () => on.pref?.("skill", skill.value));
+  const skill = el("md-outlined-select", { "data-pref": "skill", label: "AI Opponent Difficulty", value: "4.0" }, ...skillOptions);
+  skill.addEventListener("change", () => {
+    on.pref?.("skill", skill.value);
+    on.skill?.(skill.value);
+  });
 
-  const soundSwitch = sw({ "data-pref": "sound", selected: true }, (v) => on.pref?.("sound", v));
+  const soundSwitch = sw({ "data-pref": "sound", selected: true }, (v) => {
+    on.pref?.("sound", v);
+    on.sound?.(v);
+  });
   const highlightsSwitch = sw({ "data-pref": "highlights", selected: true }, (v) => on.pref?.("highlights", v));
   const compulsorySwitch = sw({ "data-rule": "compulsory", selected: true }, (v) => on.pref?.("compulsory", v));
   const compulsoryTableauSwitch = sw({ "data-rule": "compulsory_tableau", selected: true }, (v) => on.pref?.("compulsory_tableau", v));

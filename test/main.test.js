@@ -148,6 +148,7 @@ test("GameController stepAI advances AI moves when active player is 1", async ()
 
   controller.game.activePlayer = 1;
   await controller.stepAI();
+  controller.destroy();
 
   // Either AI played a move or ended its turn
   assert.ok(hud.rendered.length >= 2, "HUD updated during AI step");
@@ -171,6 +172,7 @@ test("GameController supports AI vs AI mode and toggling mode", () => {
   assert.equal(controller.gameMode, "ai_vs_ai");
   controller.toggleGameMode();
   assert.equal(controller.gameMode, "human_vs_ai");
+  controller.destroy();
 });
 
 test("GameController stepAI executes moves for player 0 in AI vs AI mode", async () => {
@@ -189,6 +191,7 @@ test("GameController stepAI executes moves for player 0 in AI vs AI mode", async
 
   controller.game.activePlayer = 0;
   await controller.stepAI();
+  controller.destroy();
 
   assert.ok(hud.rendered.length >= 2, "HUD updated during AI vs AI step for player 0");
 });
@@ -212,6 +215,7 @@ test("GameController stepAI handles pass action", async () => {
   controller.game.activePlayer = 0;
 
   await controller.stepAI();
+  controller.destroy();
   assert.equal(controller.game.activePlayer, 1, "Turn passed to player 1 on pass");
 });
 

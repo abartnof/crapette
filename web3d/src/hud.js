@@ -77,7 +77,7 @@ export function createHud(root, {
   };
 
   const block = (side, nameText) => {
-    const activeBadge = el("span", { className: `active-badge ${side}`, "aria-hidden": "true" }, "▶");
+    const activeBadge = el("span", { className: `active-badge ${side}`, "aria-hidden": "true" });
     const nameNode = el("span", { className: `hud-name ${side}` }, nameText);
     const nameGroup = el("div", { className: "hud-name-group" }, activeBadge, nameNode);
 
@@ -92,7 +92,7 @@ export function createHud(root, {
   };
 
   const blocks = {
-    opp: block("opp", "Opponent"),
+    opp: block("opp", "Opp"),
     you: block("you", "You"),
   };
 
@@ -344,8 +344,22 @@ export class HUD {
       this.chrome = createChrome(root, {
         document: this.doc,
         newGame: () => {
-          this.toggleNewGameModal(true);
-          if (this.onNewGame) this.onNewGame();
+          if (this.chrome && typeof this.chrome.showNewGame === "function") {
+            this.chrome.showNewGame(
+              {
+                mode: this.gameMode || "human_vs_ai",
+                skill: this.skill || "4.0",
+                rules: this.rules || "competitive",
+              },
+              (chosen) => {
+                if (chosen && this.onStartNewGame) {
+                  this.onStartNewGame(chosen);
+                }
+              }
+            );
+          } else if (this.onNewGame) {
+            this.onNewGame();
+          }
         },
         mode: () => {
           if (this.onToggleMode) this.onToggleMode();
@@ -359,13 +373,32 @@ export class HUD {
         help: () => {
           this.toggleRulesModal(true);
         },
+        log: (open) => {
+          const logPanel = this.container.querySelector("#game-log");
+          if (logPanel) {
+            if (open) logPanel.removeAttribute("hidden");
+            else logPanel.setAttribute("hidden", "true");
+          }
+        },
+        pref: (name, val) => {
+          if (name === "surface" && this.onChangeFelt) this.onChangeFelt(val);
+          if (name === "faces" && this.onChangeFaces) this.onChangeFaces(val);
+          if (name === "skill" && this.onToggleSkill) this.onToggleSkill(val);
+          if (name === "sound" && this.onToggleSound) this.onToggleSound(val);
+        },
         surface: (felt) => {
           this.currentFelt = felt;
           if (this.onChangeFelt) this.onChangeFelt(felt);
         },
+        faces: (faces) => {
+          if (this.onChangeFaces) this.onChangeFaces(faces);
+        },
         sound: (enabled) => {
           this.isMuted = !enabled;
           if (this.onToggleSound) this.onToggleSound();
+        },
+        resetTutorial: () => {
+          if (this.onResetTutorial) this.onResetTutorial();
         },
       });
     } catch (e) {
@@ -386,6 +419,15 @@ export class HUD {
       onCrapette: () => { if (this.onCrapette) this.onCrapette(); },
       onUndo: () => { if (this.onUndo) this.onUndo(); },
     });
+
+    // 3.5 Game Log Drawer (.game-log)
+    const logPanel = this._el("aside", { className: "game-log surface", id: "game-log" });
+    logPanel.setAttribute("hidden", "true");
+    logPanel.setAttribute("aria-label", "The game log");
+    const logTitle = this._el("h2", { text: "Game log" });
+    const logList = this._el("ol", { id: "game-log-list" });
+    logPanel.append(logTitle, logList);
+    root.append(logPanel);
 
     // 4. Floating scorebug inside .info > .hud-slot
     this.scorebug = createHud(this.overlay.hudSlot, {

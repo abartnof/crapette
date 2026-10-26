@@ -7,7 +7,6 @@ import {
   HemisphereLight,
   Mesh,
   MeshBasicMaterial,
-  MeshStandardMaterial,
   MeshToonMaterial,
   ShadowMaterial,
   PerspectiveCamera,
@@ -22,7 +21,9 @@ import {
   SRGBColorSpace,
 } from "three";
 import { CARD, TABLE } from "./units.js";
-import { inkMaterial, INK } from "./materials.js";
+import { cardGeometry } from "./cards.js";
+import { cardMaterials, inkMaterial, INK, RAMPS } from "./materials.js";
+import { lying } from "./kinematics.js";
 import { PATTERNS, drawSurface, chooseSurface, BASE } from "./surfaces.js";
 import { drawJumbo } from "./faces.js";
 
@@ -38,6 +39,10 @@ export class Table3D {
     this.activeHighlights = [];
     this.lastSyncedState = null;
     this.surfaceId = "dot-grid";
+
+    this.cardGeom = cardGeometry();
+    this.ramp = RAMPS.card();
+    this.inkMaterials = new Set();
 
     this.scene = null;
     this.camera = null;
@@ -111,13 +116,44 @@ export class Table3D {
         this.camera.aspect = w / h;
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(w, h, false);
+        this._updateInkResolution();
       };
       if (typeof window !== "undefined") {
         window.addEventListener("resize", this._onResize);
       }
+      this._updateInkResolution();
     } catch (e) {
       // Fallback gracefully to headless if WebGL fails
       this.headless = true;
+    }
+  }
+
+  registerInk(mat) {
+    if (!mat || !mat.uniforms) return;
+    this.inkMaterials.add(mat);
+    if (this.canvas) {
+      const w = this.canvas.clientWidth || 800;
+      const h = this.canvas.clientHeight || 600;
+      const pr = Math.min(globalThis.devicePixelRatio || 1, 2);
+      mat.uniforms.resolution.value.set(w * pr, h * pr);
+    }
+  }
+
+  unregisterInk(mat) {
+    if (!mat) return;
+    this.inkMaterials.delete(mat);
+    if (mat.dispose) mat.dispose();
+  }
+
+  _updateInkResolution() {
+    if (!this.canvas) return;
+    const w = this.canvas.clientWidth || 800;
+    const h = this.canvas.clientHeight || 600;
+    const pr = Math.min(globalThis.devicePixelRatio || 1, 2);
+    for (const mat of this.inkMaterials) {
+      if (mat.uniforms?.resolution?.value) {
+        mat.uniforms.resolution.value.set(w * pr, h * pr);
+      }
     }
   }
 
@@ -128,8 +164,8 @@ export class Table3D {
   }
 
   _createTableSurface() {
-    const WIDE = TABLE.width || 120;
-    const DEEP = TABLE.depth || 90;
+    const WIDE = TABLE.width || 140;
+    const DEEP = TABLE.depth || 100;
     const tableGeom = new PlaneGeometry(WIDE, DEEP);
 
     let canvas = null;
@@ -147,11 +183,10 @@ export class Table3D {
 
     const tableMat = new MeshBasicMaterial({
       map: this.surfaceTexture || null,
-      color: "#edeef0",
     });
     this.tableMesh = new Mesh(tableGeom, tableMat);
     this.tableMesh.rotation.x = -Math.PI / 2;
-    this.tableMesh.position.y = -0.05;
+    this.tableMesh.position.set(0, 0, 0);
     this.scene.add(this.tableMesh);
 
     // Cassino soft shadow receiver plane
@@ -164,13 +199,11 @@ export class Table3D {
 
     // Wood trim underneath
     const woodMat = new MeshToonMaterial({ color: "#9a6b43" });
-    const wood = new Mesh(new BoxGeometry(WIDE, 3, DEEP), woodMat);
-    wood.position.set(0, -1.55, 0);
+    const wood = new Mesh(new BoxGeometry(WIDE, 2.5, DEEP), woodMat);
+    wood.position.set(0, -2.5 / 2 - 0.02, 0);
     this.scene.add(wood);
 
-    try {
-      this.setSurface(chooseSurface({ chosen: "dot-grid" }));
-    } catch (e) {}
+    this.setSurface(this.surfaceId || "dot-grid");
   }
 
   setFelt(felt) {
@@ -181,42 +214,36 @@ export class Table3D {
     this.surfaceId = id;
     if (this.headless || !this.scene) return;
     const pattern = PATTERNS.find((p) => p.id === id) || PATTERNS.find((p) => p.id === "dot-grid") || PATTERNS[0];
-    if (pattern && typeof document !== "undefined") {
-      let canvas = this.surfaceTexture ? this.surfaceTexture.image : null;
+    if (pattern && typeof document !== "undefined" && this.surfaceTexture) {
+      let canvas = this.surfaceTexture.image;
       if (!canvas || !canvas.getContext) {
         canvas = document.createElement("canvas");
-        canvas.width = 1024;
-        canvas.height = 1024;
       }
-      const ctx = canvas.getContext("2d");
-      if (ctx) {
-        drawSurface(ctx, pattern);
-        if (this.surfaceTexture) {
-          this.surfaceTexture.image = canvas;
-          this.surfaceTexture.needsUpdate = true;
-        }
-      }
+      drawSurface(canvas, pattern);
+      this.surfaceTexture.image = canvas;
+      this.surfaceTexture.needsUpdate = true;
       this.scene.background = new Color(BASE);
       if (this.scene.fog) this.scene.fog.color.set(BASE);
-      return;
     }
   }
 
   decorateCard(mesh, { line = "plain", dim = false } = {}) {
     if (!mesh || !mesh.children) return;
     const inks = {
-      plain: INK,
-      hover: "#1d2433",
-      hint: "#009fb7",
-      chosen: "#e8900c",
+      plain: { color: INK, width: 2.5 },
+      hover: { color: INK, width: 3.75 },
+      hint: { color: "#009fb7", width: 4.0 },
+      chosen: { color: "#e8900c", width: 4.0 },
     };
-    const widths = { plain: 2.0, hover: 3.2, hint: 3.5, chosen: 3.5 };
     const inkChild = mesh.children.find((c) => c.userData?.isInkOutline);
     if (inkChild) {
-      inkChild.material = inkMaterial({ color: inks[line] || INK, width: widths[line] || 2.0 });
+      const cfg = inks[line] || inks.plain;
+      if (inkChild.material) this.unregisterInk(inkChild.material);
+      inkChild.material = inkMaterial(cfg);
+      this.registerInk(inkChild.material);
     }
-    if (Array.isArray(mesh.material) && mesh.material[2]) {
-      mesh.material[2].color.setScalar(dim ? 0.72 : 1.0);
+    if (Array.isArray(mesh.material) && mesh.material[0]) {
+      mesh.material[0].color.setScalar(dim ? 0.72 : 1.0);
     }
   }
 
@@ -393,7 +420,11 @@ export class Table3D {
     // Clear old card meshes
     for (const mesh of this.cardMeshes) {
       this.scene.remove(mesh);
-      if (mesh.geometry) mesh.geometry.dispose();
+      for (const child of mesh.children) {
+        if (child.userData?.isInkOutline && child.material) {
+          this.unregisterInk(child.material);
+        }
+      }
       if (Array.isArray(mesh.material)) {
         mesh.material.forEach((m) => m.dispose());
       } else if (mesh.material) {
@@ -401,8 +432,6 @@ export class Table3D {
       }
     }
     this.cardMeshes = [];
-
-    const geom = new BoxGeometry(CARD.width, CARD.thickness, CARD.height);
 
     const addCardMesh = (card, slotKey, x, y, z, faceUp = true) => {
       let faceTex = null;
@@ -424,20 +453,24 @@ export class Table3D {
 
       if (!backTex) backTex = this._getCardBackTexture(card.deck ?? 0);
 
-      const faceMat = new MeshStandardMaterial({ map: faceTex || undefined, color: faceTex ? "#ffffff" : "#faf8f2" });
-      const backMat = new MeshStandardMaterial({ map: backTex || undefined, color: backTex ? "#ffffff" : (card.deck === 0 ? "#c8202c" : "#1d3557") });
-      const edgeMat = new MeshStandardMaterial({ color: "#f3efe6" });
+      const materials = cardMaterials({
+        face: faceTex,
+        back: backTex,
+        ramp: this.ramp,
+      });
 
-      // Materials order: +x, -x, +y (top face), -y (bottom back), +z, -z
-      const materials = [edgeMat, edgeMat, faceUp ? faceMat : backMat, faceUp ? backMat : faceMat, edgeMat, edgeMat];
+      const mesh = new Mesh(this.cardGeom, materials);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
 
-      const mesh = new Mesh(geom, materials);
-      mesh.position.set(x, y, z);
+      const p = lying({ x, z, height: y, faceUp });
+      mesh.position.copy(p.position);
+      mesh.quaternion.copy(p.quaternion);
 
       // Inverted-hull ink line outline child mesh
-      const inkOutlineGeom = new BoxGeometry(CARD.width, CARD.thickness, CARD.height);
-      const inkMat = inkMaterial({ color: INK, width: 2.0 });
-      const outlineMesh = new Mesh(inkOutlineGeom, inkMat);
+      const inkMat = inkMaterial({ color: INK, width: 2.5 });
+      this.registerInk(inkMat);
+      const outlineMesh = new Mesh(this.cardGeom, inkMat);
       outlineMesh.userData = { isInkOutline: true };
       mesh.add(outlineMesh);
 
@@ -540,9 +573,10 @@ export class Table3D {
     const cardHits = this.raycaster.intersectObjects(this.cardMeshes);
     if (cardHits.length > 0) {
       const topHit = cardHits[0];
+      const hitObj = topHit.object.userData?.isInkOutline ? topHit.object.parent : topHit.object;
       return {
-        card: topHit.object.userData,
-        slot: topHit.object.userData.sourceSlot,
+        card: hitObj.userData,
+        slot: hitObj.userData.sourceSlot,
       };
     }
 

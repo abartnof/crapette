@@ -17,6 +17,7 @@ export class CrapetteGame {
     this.drawnCard = null;
     this.turnHistory = [];
     this.crapetteBlunder = null; // details if active player made a blunder
+    this.winner = null;
 
     // Initialize players
     this.players = [
